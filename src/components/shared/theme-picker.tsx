@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { updateThemeAction } from "@/lib/actions/theme";
-import { THEME_COLORS, THEME_MODES } from "@/lib/themes";
+import { THEME_COLORS, THEME_MODES, CLASSIC_THEME } from "@/lib/themes";
 import { cn } from "@/lib/utils";
 
 interface ThemePickerProps {
@@ -69,6 +69,32 @@ export function ThemePicker({ current }: ThemePickerProps) {
           </DialogHeader>
 
           <div className="space-y-5">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                Clássico
+              </p>
+              <button
+                type="button"
+                data-theme={CLASSIC_THEME}
+                onClick={() => apply(CLASSIC_THEME)}
+                disabled={pending}
+                className={cn(
+                  "flex items-center gap-2 rounded-xl border border-[var(--hp-border)] bg-[var(--hp-bg)] p-2 text-left transition-all",
+                  active === CLASSIC_THEME
+                    ? "ring-2 ring-accent"
+                    : "hover:scale-[1.02] hover:opacity-90",
+                  pending && "opacity-60",
+                )}
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--hp-accent)] text-zinc-950">
+                  {active === CLASSIC_THEME ? <Check className="h-4 w-4" /> : null}
+                </span>
+                <span className="text-xs font-medium text-[var(--hp-fg)]">
+                  Original (escuro)
+                </span>
+              </button>
+            </div>
+
             {THEME_COLORS.map((color) => (
               <div key={color.id}>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">

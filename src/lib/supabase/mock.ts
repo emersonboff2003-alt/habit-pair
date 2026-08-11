@@ -58,7 +58,7 @@ const PROFILES: Profile[] = [
     pin_hash: null,
     points_balance: 120,
     total_points_earned: 120,
-    theme: "pink-dark",
+    theme: "classic-dark",
     created_at: now(),
   },
   {
@@ -67,7 +67,7 @@ const PROFILES: Profile[] = [
     pin_hash: null,
     points_balance: 60,
     total_points_earned: 60,
-    theme: "blue-light",
+    theme: "classic-dark",
     created_at: now(),
   },
 ];

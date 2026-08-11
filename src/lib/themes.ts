@@ -15,12 +15,17 @@ export const THEME_MODES = [
   { id: "light", label: "Claro" },
 ] as const;
 
-/** Todos os temas: `<cor>-<modo>` (ex.: "pink-dark", "blue-light"). */
-export const ALL_THEMES: string[] = THEME_COLORS.flatMap((color) =>
-  THEME_MODES.map((mode) => `${color.id}-${mode.id}`),
-);
+export const CLASSIC_THEME = "classic-dark";
 
-export const DEFAULT_THEME = "pink-dark";
+/** Todos os temas: `<cor>-<modo>` (ex.: "pink-dark", "blue-light") + o clássico. */
+export const ALL_THEMES: string[] = [
+  CLASSIC_THEME,
+  ...THEME_COLORS.flatMap((color) =>
+    THEME_MODES.map((mode) => `${color.id}-${mode.id}`),
+  ),
+];
+
+export const DEFAULT_THEME = CLASSIC_THEME;
 
 export function isThemeValid(theme: string): boolean {
   return ALL_THEMES.includes(theme);

@@ -22,7 +22,7 @@ CREATE TABLE profiles (
   pin_hash VARCHAR(255),
   points_balance INT DEFAULT 0 CHECK (points_balance >= 0),
   total_points_earned INT DEFAULT 0 CHECK (total_points_earned >= 0),
-  theme VARCHAR(30) NOT NULL DEFAULT 'pink-dark',
+  theme VARCHAR(30) NOT NULL DEFAULT 'classic-dark',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -422,4 +422,4 @@ INSERT INTO rewards (id, title, description, cost_points, created_by) VALUES
 -- Para adicionar o campo de tema ao banco atual, rode APENAS o comando abaixo
 -- no SQL Editor do Supabase (pode ser re-executado sem problema):
 -- =============================================================================
--- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS theme VARCHAR(30) NOT NULL DEFAULT 'pink-dark';
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS theme VARCHAR(30) NOT NULL DEFAULT 'classic-dark';
