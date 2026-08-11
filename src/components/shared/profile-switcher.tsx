@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown, LogOut, UserRound } from "lucide-react";
 import { logoutAction } from "@/lib/actions/session";
+import { DEFAULT_THEME } from "@/lib/themes";
 import type { Profile } from "@/types/database";
 import { cn, initials } from "@/lib/utils";
 
@@ -60,7 +61,10 @@ export function ProfileSwitcher({ current, profiles }: ProfileSwitcherProps) {
               <button
                 key={p.id}
                 type="button"
-                onClick={handleSwitch}
+                onClick={() => {
+                  document.documentElement.setAttribute("data-theme", p.theme);
+                  handleSwitch();
+                }}
                 disabled={pending}
                 className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-fg-2 transition-colors hover:bg-raised disabled:opacity-50"
               >
@@ -75,7 +79,10 @@ export function ProfileSwitcher({ current, profiles }: ProfileSwitcherProps) {
             ))}
             <button
               type="button"
-              onClick={handleSwitch}
+              onClick={() => {
+                document.documentElement.setAttribute("data-theme", DEFAULT_THEME);
+                handleSwitch();
+              }}
               disabled={pending}
               className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-300 transition-colors hover:bg-red-950/40 disabled:opacity-50"
             >

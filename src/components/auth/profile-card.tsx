@@ -16,6 +16,7 @@ export function ProfileCard({ profile }: ProfileCardProps) {
 
   function handleSelect() {
     setError(null);
+    document.documentElement.setAttribute("data-theme", profile.theme);
     startTransition(async () => {
       const result = await selectProfileAction(profile.id);
       if (!result.ok) setError(result.error ?? "Não foi possível entrar.");
