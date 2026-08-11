@@ -1,6 +1,8 @@
 /* Habit Pair — Service Worker (PWA) */
 
-const CACHE_NAME = "habit-pair-v1";
+// Bump a versão (ex.: v2) sempre que o app for atualizado para forçar
+// o navegador a instalar o service worker novo e limpar caches antigos.
+const CACHE_NAME = "habit-pair-v2";
 const CORE_ASSETS = [
   "/",
   "/select-profile",
