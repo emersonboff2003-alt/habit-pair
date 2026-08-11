@@ -187,7 +187,7 @@ BEGIN
   -- 3) Motor de missões: incrementa progresso nas missões ativas do tipo.
   FOR v_mission IN
     SELECT um.id AS um_id, m.id AS mission_id, m.target_value, m.reward_points,
-           m.is_cooperative, um.user_id AS um_user_id
+           m.is_cooperative, um.user_id AS um_user_id, um.current_progress
       FROM user_missions um
       JOIN missions m ON m.id = um.mission_id
      WHERE m.target_type = NEW.type
