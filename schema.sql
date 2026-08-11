@@ -184,7 +184,15 @@ BEGIN
   v_raw := gamification_raw_points(NEW.type, NEW.value, NEW.description);
   NEW.points_earned := GREATEST(LEAST(v_raw, v_cap - v_already_today), 0);
 
-  -- 3) Motor de missões: incrementa progresso nas missões ativas do tipo.
+  -- 3) Credita os pontos do registro no saldo do perfil.
+  IF NEW.points_earned > 0 THEN
+    UPDATE profiles
+       SET points_balance = points_balance + NEW.points_earned,
+           total_points_earned = total_points_earned + NEW.points_earned
+     WHERE id = NEW.user_id;
+  END IF;
+
+  -- 4) Motor de missões: incrementa progresso nas missões ativas do tipo.
   FOR v_mission IN
     SELECT um.id AS um_id, m.id AS mission_id, m.target_value, m.reward_points,
            m.is_cooperative, um.user_id AS um_user_id, um.current_progress

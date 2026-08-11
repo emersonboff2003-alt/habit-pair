@@ -288,7 +288,16 @@ function insertLog(payload: Record<string, unknown>): { data: Log | null; error:
   };
   LOGS.push(log);
 
-  // 3) Motor de missões: progresso + conclusão + crédito de pontos.
+  // 3) Credita os pontos do registro no saldo do perfil.
+  if (pointsEarned > 0) {
+    const profile = PROFILES.find((p) => p.id === user_id);
+    if (profile) {
+      profile.points_balance += pointsEarned;
+      profile.total_points_earned += pointsEarned;
+    }
+  }
+
+  // 4) Motor de missões: progresso + conclusão + crédito de pontos.
   for (const um of USER_MISSIONS) {
     const mission = MISSIONS.find((m) => m.id === um.mission_id);
     if (!mission || mission.target_type !== type || um.status !== "in_progress" || !mission.is_active) {
