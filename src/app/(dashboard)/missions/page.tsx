@@ -21,18 +21,18 @@ export default async function MissionsPage() {
     <div className="space-y-6 animate-fade-in-up">
       <div>
         <h1 className="text-xl font-bold tracking-tight">Missões</h1>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-muted">
           Complete metas para ganhar pontos. Missões cooperativas somam os esforços do casal.
         </p>
       </div>
 
       <section className="space-y-3">
         <div className="flex items-center gap-2">
-          <Target className="h-4 w-4 text-violet-400" />
+          <Target className="h-4 w-4 text-accent" />
           <h2 className="text-sm font-semibold">Em andamento</h2>
         </div>
         {inProgress.length === 0 ? (
-          <p className="text-sm text-zinc-500">Nenhuma missão em andamento.</p>
+          <p className="text-sm text-muted">Nenhuma missão em andamento.</p>
         ) : (
           inProgress.map((um) => (
             <MissionCard
@@ -77,7 +77,7 @@ export default async function MissionsPage() {
       {failed.length > 0 && (
         <section className="space-y-3">
           <div className="flex items-center gap-2">
-            <XCircle className="h-4 w-4 text-zinc-500" />
+            <XCircle className="h-4 w-4 text-muted" />
             <h2 className="text-sm font-semibold">Não cumpridas</h2>
           </div>
           {failed.map((um) => (

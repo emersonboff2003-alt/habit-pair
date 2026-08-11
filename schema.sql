@@ -22,6 +22,7 @@ CREATE TABLE profiles (
   pin_hash VARCHAR(255),
   points_balance INT DEFAULT 0 CHECK (points_balance >= 0),
   total_points_earned INT DEFAULT 0 CHECK (total_points_earned >= 0),
+  theme VARCHAR(30) NOT NULL DEFAULT 'pink-dark',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -413,3 +414,12 @@ INSERT INTO rewards (id, title, description, cost_points, created_by) VALUES
    'Sessão Netflix + pizza', 'Escolha o filme/série e a pizza do dia.', 80, NULL),
   ('c0000000-0000-0000-0000-000000000004',
    'Manhã livre sem tarefas', 'Um período da manhã inteira sem afazeres domésticos.', 100, NULL);
+
+-- =============================================================================
+-- UPGRADE de banco já existente (criado antes do campo "theme")
+-- -----------------------------------------------------------------------------
+-- O banco do Supabase que já está em produção NÃO re-roda o CREATE TABLE acima.
+-- Para adicionar o campo de tema ao banco atual, rode APENAS o comando abaixo
+-- no SQL Editor do Supabase (pode ser re-executado sem problema):
+-- =============================================================================
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS theme VARCHAR(30) NOT NULL DEFAULT 'pink-dark';

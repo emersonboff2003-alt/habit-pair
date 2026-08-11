@@ -58,6 +58,7 @@ const PROFILES: Profile[] = [
     pin_hash: null,
     points_balance: 120,
     total_points_earned: 120,
+    theme: "pink-dark",
     created_at: now(),
   },
   {
@@ -66,6 +67,7 @@ const PROFILES: Profile[] = [
     pin_hash: null,
     points_balance: 60,
     total_points_earned: 60,
+    theme: "blue-light",
     created_at: now(),
   },
 ];
@@ -386,7 +388,7 @@ function orClause(row: Row, filter: string): boolean {
 
 class MockBuilder {
   private table: TableName;
-  private mode: "select" | "insert";
+  private mode: "select" | "insert" | "update";
   private payload?: Row;
   private cols = "*";
   private preds: ((r: Row) => boolean)[] = [];
@@ -457,6 +459,12 @@ class MockBuilder {
     return this;
   }
 
+  update(payload: Row) {
+    this.mode = "update";
+    this.payload = payload;
+    return this;
+  }
+
   then<TResult1 = { data: Row | Row[] | null; error: MockError }, TResult2 = never>(
     onfulfilled?:
       | ((value: { data: Row | Row[] | null; error: MockError }) => TResult1 | PromiseLike<TResult1>)
@@ -482,6 +490,14 @@ class MockBuilder {
       if (!row.created_at) row.created_at = now();
       getStore()[this.table].push(row);
       return { data: project(row, this.cols), error: null };
+    }
+
+    if (this.mode === "update") {
+      const rows = getStore()[this.table].filter((r) => this.preds.every((p) => p(r)));
+      for (const row of rows) {
+        Object.assign(row, this.payload ?? {});
+      }
+      return { data: null, error: null };
     }
 
     let rows = getStore()[this.table].filter((r) => this.preds.every((p) => p(r)));

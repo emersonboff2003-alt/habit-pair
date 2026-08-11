@@ -12,7 +12,7 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
     return (
       <div
         ref={ref}
-        className={cn("h-2.5 w-full overflow-hidden rounded-full bg-zinc-800", className)}
+        className={cn("h-2.5 w-full overflow-hidden rounded-full bg-raised", className)}
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
@@ -22,7 +22,7 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
         <div
           className={cn(
             "h-full rounded-full transition-all duration-500 ease-out",
-            indicatorClassName ?? "bg-zinc-200",
+            indicatorClassName ?? "bg-foreground",
           )}
           style={{ width: `${clamped}%` }}
         />

@@ -38,33 +38,33 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-4 animate-fade-in-up">
       <div>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-muted">
           {greetingFor(new Date().getHours())},{" "}
-          <span className="font-semibold text-zinc-200">{current.name}</span>
+          <span className="font-semibold text-fg-2">{current.name}</span>
         </p>
         <h1 className="text-xl font-bold tracking-tight">Como estão seus hábitos hoje?</h1>
       </div>
 
       {/* Cartão de pontos */}
-      <div className="relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-600/20 via-card to-cyan-500/10 p-5">
-        <Sparkles className="absolute -right-4 -top-4 h-24 w-24 text-violet-500/10" />
+      <div className="relative overflow-hidden rounded-2xl border border-accent/30 bg-gradient-to-br from-accent/20 via-card to-accent-2/10 p-5">
+        <Sparkles className="absolute -right-4 -top-4 h-24 w-24 text-accent/10" />
         <div className="flex items-end justify-between">
           <div>
-            <p className="flex items-center gap-1.5 text-xs font-medium text-zinc-400">
-              <Star className="h-3.5 w-3.5 text-violet-400" /> Saldo de pontos
+            <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Star className="h-3.5 w-3.5 text-accent" /> Saldo de pontos
             </p>
-            <p className="mt-1 text-4xl font-extrabold tracking-tight text-zinc-50">
+            <p className="mt-1 text-4xl font-extrabold tracking-tight text-foreground">
               {current.points_balance.toLocaleString("pt-BR")}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-zinc-400">Pontos hoje</p>
-            <p className="text-lg font-bold text-violet-300">
+            <p className="text-xs text-muted-foreground">Pontos hoje</p>
+            <p className="text-lg font-bold text-accent">
               +{myTotals.totalPointsToday}
             </p>
           </div>
         </div>
-        <p className="mt-3 text-xs text-zinc-500">
+        <p className="mt-3 text-xs text-muted">
           {current.total_points_earned.toLocaleString("pt-BR")} pontos ganhos no total
         </p>
       </div>

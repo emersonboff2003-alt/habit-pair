@@ -29,7 +29,7 @@ export default async function LogsPage() {
     <div className="space-y-6 animate-fade-in-up">
       <div>
         <h1 className="text-xl font-bold tracking-tight">Registrar</h1>
-        <p className="text-sm text-zinc-500">Toque para registrar seus hábitos de hoje.</p>
+        <p className="text-sm text-muted">Toque para registrar seus hábitos de hoje.</p>
       </div>
 
       <QuickLogPanel nutritionDone={nutritionDone} />
@@ -37,7 +37,7 @@ export default async function LogsPage() {
       {todayLogs.length > 0 && (
         <section className="space-y-3">
           <div className="flex items-center gap-2">
-            <History className="h-4 w-4 text-zinc-500" />
+            <History className="h-4 w-4 text-muted" />
             <h2 className="text-sm font-semibold">Registros de hoje</h2>
           </div>
           <LogList logs={todayLogs.slice().reverse()} />
@@ -47,7 +47,7 @@ export default async function LogsPage() {
       {recentLogs.length > 0 && (
         <section className="space-y-3">
           <div className="flex items-center gap-2">
-            <History className="h-4 w-4 text-zinc-500" />
+            <History className="h-4 w-4 text-muted" />
             <h2 className="text-sm font-semibold">Atividade recente</h2>
           </div>
           <LogList logs={recentLogs} />

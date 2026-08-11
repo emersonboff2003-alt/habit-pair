@@ -32,15 +32,15 @@ export function ProfileCard({ profile }: ProfileCardProps) {
         aria-label={`Entrar como ${profile.name}`}
       >
         <span
-          className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-zinc-700 bg-gradient-to-br from-violet-500 to-cyan-400 text-2xl font-bold text-zinc-950 transition-all group-hover:scale-105 group-hover:border-zinc-400 group-active:scale-95 disabled:opacity-60"
+          className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-border bg-gradient-to-br from-accent to-accent-2 text-2xl font-bold text-zinc-950 transition-all group-hover:scale-105 group-hover:border-accent group-active:scale-95 disabled:opacity-60"
         >
           {pending ? (
-            <Loader2 className="h-7 w-7 animate-spin text-zinc-900" />
+            <Loader2 className="h-7 w-7 animate-spin text-background" />
           ) : (
             initials(profile.name)
           )}
         </span>
-        <span className="text-sm font-semibold text-zinc-200">{profile.name}</span>
+        <span className="text-sm font-semibold text-foreground">{profile.name}</span>
       </button>
       {error && <p className="text-xs text-red-400">{error}</p>}
     </div>

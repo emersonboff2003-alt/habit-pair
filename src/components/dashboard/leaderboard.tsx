@@ -17,7 +17,7 @@ export function Leaderboard({ entries }: LeaderboardProps) {
   const sorted = [...entries].sort((a, b) => b.todayPoints - a.todayPoints);
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-card p-5">
+    <div className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-4 flex items-center gap-2">
         <Trophy className="h-5 w-5 text-amber-300" />
         <h2 className="text-sm font-semibold">Placar de hoje</h2>
@@ -30,7 +30,7 @@ export function Leaderboard({ entries }: LeaderboardProps) {
               <div className="flex items-center gap-2.5">
                 <span
                   className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-400 text-xs font-bold text-zinc-950",
+                    "flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent-2 text-xs font-bold text-zinc-950",
                     index === 0 && "ring-2 ring-amber-400",
                   )}
                 >
@@ -38,21 +38,21 @@ export function Leaderboard({ entries }: LeaderboardProps) {
                 </span>
                 <div>
                   <p className="text-sm font-semibold">{entry.profile.name}</p>
-                  <p className="text-xs text-zinc-500">
-                    <Star className="mr-1 inline h-3 w-3 text-violet-400" />
+                  <p className="text-xs text-muted">
+                    <Star className="mr-1 inline h-3 w-3 text-accent" />
                     {entry.profile.points_balance.toLocaleString("pt-BR")} pts no total
                   </p>
                 </div>
               </div>
-              <span className="text-sm font-bold text-zinc-100">
+              <span className="text-sm font-bold text-foreground">
                 {entry.todayPoints} pts
               </span>
             </div>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-raised">
               <div
                 className={cn(
                   "h-full rounded-full transition-all duration-500",
-                  index === 0 ? "bg-amber-400" : "bg-zinc-500",
+                  index === 0 ? "bg-amber-400" : "bg-muted-foreground",
                 )}
                 style={{ width: `${Math.round((entry.todayPoints / maxToday) * 100)}%` }}
               />

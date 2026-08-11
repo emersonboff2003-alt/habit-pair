@@ -1,27 +1,248 @@
 @import "tailwindcss";
 
+/* =============================================================================
+   Sistema de temas (Habit Pair)
+   -----------------------------------------------------------------------------
+   Cada perfil salva um tema (ex.: "pink-dark", "blue-light"). O tema é aplicado
+   no <html data-theme="...">, que sobrescreve as variáveis abaixo.
+
+   12 temas = 6 cores (rosa, dourado, azul, ciano, vermelho, verde) x 2 modos
+   (escuro e claro), com paletas pastel.
+
+   Cores de CATEGORIA (água/exercício/nutrição/pontos) são fixas e não mudam
+   com o tema, para manter a identidade dos hábitos.
+   ============================================================================= */
+
+/* Cores fixas de categoria (compiladas estaticamente) */
 @theme {
-  --color-background: #09090b;
-  --color-foreground: #fafafa;
-  --color-muted: #a1a1aa;
-  --color-muted-foreground: #71717a;
-  --color-border: #27272a;
-  --color-card: #101013;
-  --color-card-hover: #16161a;
   --color-accent-water: #22d3ee;
   --color-accent-exercise: #f59e0b;
   --color-accent-nutrition: #10b981;
   --color-accent-points: #8b5cf6;
 }
 
-html {
-  background-color: var(--color-background);
+/* Tokens semânticos que resolvem em runtime conforme o tema ativo */
+@theme inline {
+  --color-background: var(--hp-bg);
+  --color-foreground: var(--hp-fg);
+  --color-fg-2: var(--hp-fg-2);
+  --color-muted: var(--hp-muted);
+  --color-muted-foreground: var(--hp-fg-3);
+  --color-border: var(--hp-border);
+  --color-card: var(--hp-surface);
+  --color-card-hover: var(--hp-surface-hover);
+  --color-raised: var(--hp-surface-2);
+  --color-accent: var(--hp-accent);
+  --color-accent-2: var(--hp-accent-2);
+}
+
+/* -----------------------------------------------------------------------------
+   Tema padrão (sem data-theme): visual atual, usado fora do painel (login).
+   ----------------------------------------------------------------------------- */
+:root {
   color-scheme: dark;
+  --hp-bg: #09090b;
+  --hp-surface: #101013;
+  --hp-surface-2: #18181b;
+  --hp-surface-hover: #16161a;
+  --hp-border: #27272a;
+  --hp-fg: #fafafa;
+  --hp-fg-2: #d4d4d8;
+  --hp-fg-3: #a1a1aa;
+  --hp-muted: #71717a;
+  --hp-accent: #a78bfa;
+  --hp-accent-2: #22d3ee;
+}
+
+/* Modo claro muda o color-scheme (controles nativos de formulário) */
+:root[data-theme$="-light"] {
+  color-scheme: light;
+}
+
+/* -----------------------------------------------------------------------------
+   Temas escuros (pastel)
+   ----------------------------------------------------------------------------- */
+[data-theme="pink-dark"] {
+  --hp-bg: #1a1116;
+  --hp-surface: #241720;
+  --hp-surface-2: #2f1f29;
+  --hp-surface-hover: #2a1b24;
+  --hp-border: #4a2f3d;
+  --hp-fg: #fdf2f7;
+  --hp-fg-2: #ead2dd;
+  --hp-fg-3: #c5a1b3;
+  --hp-muted: #9a7889;
+  --hp-accent: #f9a8d4;
+  --hp-accent-2: #f472b6;
+}
+
+[data-theme="gold-dark"] {
+  --hp-bg: #191409;
+  --hp-surface: #241d10;
+  --hp-surface-2: #302718;
+  --hp-surface-hover: #2a2113;
+  --hp-border: #4a3d20;
+  --hp-fg: #fdf8ea;
+  --hp-fg-2: #e9dcbb;
+  --hp-fg-3: #c1b289;
+  --hp-muted: #96865d;
+  --hp-accent: #fcd34d;
+  --hp-accent-2: #f59e0b;
+}
+
+[data-theme="blue-dark"] {
+  --hp-bg: #0d1520;
+  --hp-surface: #16202f;
+  --hp-surface-2: #1e2b3f;
+  --hp-surface-hover: #1a2537;
+  --hp-border: #31435b;
+  --hp-fg: #eef4fd;
+  --hp-fg-2: #d3e2f6;
+  --hp-fg-3: #a3bede;
+  --hp-muted: #7891b0;
+  --hp-accent: #93c5fd;
+  --hp-accent-2: #60a5fa;
+}
+
+[data-theme="cyan-dark"] {
+  --hp-bg: #0a1519;
+  --hp-surface: #132127;
+  --hp-surface-2: #1a2c33;
+  --hp-surface-hover: #16262d;
+  --hp-border: #2b4149;
+  --hp-fg: #ecfeff;
+  --hp-fg-2: #cceef3;
+  --hp-fg-3: #97c8d2;
+  --hp-muted: #6f9ba6;
+  --hp-accent: #67e8f9;
+  --hp-accent-2: #22d3ee;
+}
+
+[data-theme="red-dark"] {
+  --hp-bg: #1c1010;
+  --hp-surface: #261717;
+  --hp-surface-2: #321d1d;
+  --hp-surface-hover: #2c1a1a;
+  --hp-border: #4a2a2a;
+  --hp-fg: #fdf1f1;
+  --hp-fg-2: #efd2d2;
+  --hp-fg-3: #c99c9c;
+  --hp-muted: #997070;
+  --hp-accent: #fda4af;
+  --hp-accent-2: #f87171;
+}
+
+[data-theme="green-dark"] {
+  --hp-bg: #0e1912;
+  --hp-surface: #17251c;
+  --hp-surface-2: #1f3026;
+  --hp-surface-hover: #1b2a20;
+  --hp-border: #2f4737;
+  --hp-fg: #f0fdf4;
+  --hp-fg-2: #d2ecda;
+  --hp-fg-3: #a2c9ae;
+  --hp-muted: #79a086;
+  --hp-accent: #86efac;
+  --hp-accent-2: #4ade80;
+}
+
+/* -----------------------------------------------------------------------------
+   Temas claros (pastel)
+   ----------------------------------------------------------------------------- */
+[data-theme="pink-light"] {
+  --hp-bg: #fdf1f6;
+  --hp-surface: #ffffff;
+  --hp-surface-2: #fbe9f1;
+  --hp-surface-hover: #f6dce8;
+  --hp-border: #f0c4d6;
+  --hp-fg: #2a121d;
+  --hp-fg-2: #6b3c50;
+  --hp-fg-3: #9a6a80;
+  --hp-muted: #a97c90;
+  --hp-accent: #ec4899;
+  --hp-accent-2: #f472b6;
+}
+
+[data-theme="gold-light"] {
+  --hp-bg: #fdf7ea;
+  --hp-surface: #ffffff;
+  --hp-surface-2: #f9f0d8;
+  --hp-surface-hover: #f3e7c6;
+  --hp-border: #ecd9a6;
+  --hp-fg: #2a2006;
+  --hp-fg-2: #6b5726;
+  --hp-fg-3: #9a8248;
+  --hp-muted: #a99057;
+  --hp-accent: #d97706;
+  --hp-accent-2: #f59e0b;
+}
+
+[data-theme="blue-light"] {
+  --hp-bg: #eef3fb;
+  --hp-surface: #ffffff;
+  --hp-surface-2: #e6eefb;
+  --hp-surface-hover: #d9e5f7;
+  --hp-border: #c2d5ee;
+  --hp-fg: #0e1c30;
+  --hp-fg-2: #3c5478;
+  --hp-fg-3: #6d88ac;
+  --hp-muted: #8299ba;
+  --hp-accent: #2563eb;
+  --hp-accent-2: #60a5fa;
+}
+
+[data-theme="cyan-light"] {
+  --hp-bg: #eafcfe;
+  --hp-surface: #ffffff;
+  --hp-surface-2: #e0f8fb;
+  --hp-surface-hover: #d0f2f7;
+  --hp-border: #b0e6ee;
+  --hp-fg: #081b20;
+  --hp-fg-2: #31525c;
+  --hp-fg-3: #5f828d;
+  --hp-muted: #7499a4;
+  --hp-accent: #0891b2;
+  --hp-accent-2: #22d3ee;
+}
+
+[data-theme="red-light"] {
+  --hp-bg: #fdf0f0;
+  --hp-surface: #ffffff;
+  --hp-surface-2: #fbe6e6;
+  --hp-surface-hover: #f6d8d8;
+  --hp-border: #efc4c4;
+  --hp-fg: #2a0e0e;
+  --hp-fg-2: #6b3838;
+  --hp-fg-3: #9a6666;
+  --hp-muted: #a97878;
+  --hp-accent: #dc2626;
+  --hp-accent-2: #f87171;
+}
+
+[data-theme="green-light"] {
+  --hp-bg: #eef9f1;
+  --hp-surface: #ffffff;
+  --hp-surface-2: #e4f5e9;
+  --hp-surface-hover: #d6efdd;
+  --hp-border: #bfe6ca;
+  --hp-fg: #0c2013;
+  --hp-fg-2: #355c43;
+  --hp-fg-3: #628a70;
+  --hp-muted: #789b84;
+  --hp-accent: #16a34a;
+  --hp-accent-2: #4ade80;
+}
+
+/* -----------------------------------------------------------------------------
+   Base
+   ----------------------------------------------------------------------------- */
+html {
+  background-color: var(--hp-bg);
 }
 
 body {
-  background-color: var(--color-background);
-  color: var(--color-foreground);
+  background-color: var(--hp-bg);
+  color: var(--hp-fg);
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;

@@ -19,7 +19,7 @@ export function BottomNav() {
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
-    <nav className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-zinc-800 bg-background/95 backdrop-blur">
+    <nav className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur">
       <div className="mx-auto flex max-w-md items-stretch justify-around px-2 pt-1.5">
         {items.map((item) => {
           const active = isActive(item.href);
@@ -30,11 +30,11 @@ export function BottomNav() {
               href={item.href}
               className={cn(
                 "flex min-w-[64px] flex-col items-center gap-1 rounded-xl px-3 pb-2 pt-1.5 text-[11px] font-medium transition-colors",
-                active ? "text-zinc-50" : "text-zinc-500 hover:text-zinc-300",
+                active ? "text-foreground" : "text-muted hover:text-fg-2",
               )}
               aria-current={active ? "page" : undefined}
             >
-              <Icon className={cn("h-5 w-5", active && "text-violet-400")} strokeWidth={active ? 2.2 : 1.8} />
+              <Icon className={cn("h-5 w-5", active && "text-accent")} strokeWidth={active ? 2.2 : 1.8} />
               {item.label}
             </Link>
           );

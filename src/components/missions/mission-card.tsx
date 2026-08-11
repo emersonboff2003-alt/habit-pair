@@ -50,7 +50,7 @@ export function MissionCard({
     <div
       className={cn(
         "rounded-2xl border bg-card p-4 transition-opacity",
-        done ? "border-emerald-500/30" : failed ? "border-zinc-800 opacity-70" : "border-zinc-800",
+        done ? "border-emerald-500/30" : failed ? "border-border opacity-70" : "border-border",
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -60,7 +60,7 @@ export function MissionCard({
           </span>
           <div>
             <p className="text-sm font-semibold">{title}</p>
-            {description && <p className="text-xs text-zinc-500">{description}</p>}
+            {description && <p className="text-xs text-muted">{description}</p>}
           </div>
         </div>
         <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
@@ -82,10 +82,10 @@ export function MissionCard({
 
       <div className="mt-3">
         <div className="mb-1.5 flex items-center justify-between text-xs">
-          <span className="text-zinc-500">
+          <span className="text-muted">
             {currentProgress.toLocaleString("pt-BR")} / {targetValue.toLocaleString("pt-BR")} {type.unit}
           </span>
-          <span className={done ? "font-semibold text-emerald-300" : "font-semibold text-zinc-300"}>
+          <span className={done ? "font-semibold text-emerald-300" : "font-semibold text-fg-2"}>
             {percent}%
           </span>
         </div>

@@ -15,13 +15,13 @@ export default async function SelectProfilePage() {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-8 bg-background px-6 safe-bottom">
       <div className="text-center">
-        <span className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-400 shadow-lg shadow-violet-500/20">
+        <span className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-accent-2 shadow-lg shadow-accent/25">
           <Sparkles className="h-8 w-8 text-zinc-950" />
         </span>
         <h1 className="text-2xl font-bold tracking-tight">
-          Habit<span className="text-violet-400">Pair</span>
+          Habit<span className="text-accent">Pair</span>
         </h1>
-        <p className="mt-1 text-sm text-zinc-500">Quem está jogando agora?</p>
+        <p className="mt-1 text-sm text-muted">Quem está jogando agora?</p>
       </div>
 
       {error ? (
@@ -35,7 +35,7 @@ export default async function SelectProfilePage() {
           ))}
         </div>
       ) : (
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-muted">
           Nenhum perfil encontrado. Execute o schema.sql no Supabase.
         </p>
       )}

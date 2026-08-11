@@ -25,6 +25,7 @@ export type Profile = {
   pin_hash: string | null;
   points_balance: number;
   total_points_earned: number;
+  theme: string;
   created_at: string;
 }
 

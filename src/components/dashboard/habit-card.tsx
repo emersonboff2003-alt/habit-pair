@@ -56,7 +56,7 @@ export function HabitCard({
   const styles = accentStyles[accent];
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-card p-4">
+    <div className="rounded-2xl border border-border bg-card p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3">
           <span className={cn("flex h-10 w-10 items-center justify-center rounded-xl", styles.iconBg)}>
@@ -64,7 +64,7 @@ export function HabitCard({
           </span>
           <div>
             <p className="text-sm font-semibold">{title}</p>
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-muted">
               {doneLabel ??
                 `${value.toLocaleString("pt-BR")} / ${target.toLocaleString("pt-BR")} ${unit}`}
             </p>
@@ -83,7 +83,7 @@ export function HabitCard({
       />
 
       {capReached && (
-        <p className="mt-2 text-right text-[11px] font-medium text-zinc-500">
+        <p className="mt-2 text-right text-[11px] font-medium text-muted">
           Teto de pontos do dia atingido
         </p>
       )}

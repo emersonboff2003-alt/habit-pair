@@ -34,7 +34,7 @@ export function InstallPwaButton() {
         await promptEvent.prompt();
         setPromptEvent(null);
       }}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-800 bg-card text-zinc-300 transition-colors hover:bg-card-hover"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-fg-2 transition-colors hover:bg-card-hover"
       aria-label="Instalar aplicativo"
       title="Instalar aplicativo"
     >

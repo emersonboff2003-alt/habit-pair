@@ -23,7 +23,7 @@ export default async function StorePage() {
     <div className="space-y-6 animate-fade-in-up">
       <div>
         <h1 className="text-xl font-bold tracking-tight">Recompensas</h1>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-muted">
           Troque seus pontos por prêmios. Seu saldo:{" "}
           <span className="font-bold text-violet-300">
             {current.points_balance.toLocaleString("pt-BR")} pts
@@ -37,7 +37,7 @@ export default async function StorePage() {
           <h2 className="text-sm font-semibold">Loja</h2>
         </div>
         {rewards.length === 0 ? (
-          <p className="text-sm text-zinc-500">Nenhuma recompensa cadastrada.</p>
+          <p className="text-sm text-muted">Nenhuma recompensa cadastrada.</p>
         ) : (
           rewards.map((reward) => (
             <RewardCard key={reward.id} reward={reward} balance={current.points_balance} />

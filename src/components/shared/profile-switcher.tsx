@@ -38,21 +38,21 @@ export function ProfileSwitcher({ current, profiles }: ProfileSwitcherProps) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-full border border-zinc-800 bg-card py-1 pl-1 pr-3 transition-colors hover:bg-card-hover"
+        className="flex items-center gap-2 rounded-full border border-border bg-card py-1 pl-1 pr-3 transition-colors hover:bg-card-hover"
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-400 text-xs font-bold text-zinc-950">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent-2 text-xs font-bold text-zinc-950">
           {initials(current.name)}
         </span>
         <span className="max-w-24 truncate text-sm font-semibold">{current.name}</span>
-        <ChevronDown className={cn("h-4 w-4 text-zinc-500 transition-transform", open && "rotate-180")} />
+        <ChevronDown className={cn("h-4 w-4 text-muted transition-transform", open && "rotate-180")} />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 shadow-xl animate-pop">
-          <div className="border-b border-zinc-800 px-4 py-3">
-            <p className="text-xs text-zinc-500">Conectado como</p>
+        <div className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-2xl border border-border bg-raised shadow-xl animate-pop">
+          <div className="border-b border-border px-4 py-3">
+            <p className="text-xs text-muted">Conectado como</p>
             <p className="text-sm font-semibold">{current.name}</p>
           </div>
           <div className="p-1.5">
@@ -62,14 +62,14 @@ export function ProfileSwitcher({ current, profiles }: ProfileSwitcherProps) {
                 type="button"
                 onClick={handleSwitch}
                 disabled={pending}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-zinc-200 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-fg-2 transition-colors hover:bg-raised disabled:opacity-50"
               >
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-400 text-xs font-bold text-zinc-950">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent-2 text-xs font-bold text-zinc-950">
                   {initials(p.name)}
                 </span>
                 <span className="flex items-center gap-1.5">
                   Entrar como {p.name}
-                  <UserRound className="h-3.5 w-3.5 text-zinc-500" />
+                  <UserRound className="h-3.5 w-3.5 text-muted" />
                 </span>
               </button>
             ))}

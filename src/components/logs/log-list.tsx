@@ -17,7 +17,7 @@ const nutritionLabels: Record<string, string> = {
 
 export function LogList({ logs }: { logs: Log[] }) {
   return (
-    <ul className="divide-y divide-zinc-800 rounded-2xl border border-zinc-800 bg-card">
+    <ul className="divide-y divide-border rounded-2xl border border-border bg-card">
       {logs.map((log) => {
         const config = typeConfig[log.type];
         const Icon = config.icon;
@@ -33,8 +33,8 @@ export function LogList({ logs }: { logs: Log[] }) {
               <Icon className="h-4 w-4" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-zinc-100">{valueLabel}</p>
-              <p className="text-xs text-zinc-500">{formatDate(log.created_at)}</p>
+              <p className="text-sm font-medium text-foreground">{valueLabel}</p>
+              <p className="text-xs text-muted">{formatDate(log.created_at)}</p>
             </div>
             <span className="shrink-0 text-sm font-semibold text-violet-300">
               +{log.points_earned} pts

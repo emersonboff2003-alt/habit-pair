@@ -74,7 +74,7 @@ export function QuickLogPanel({ nutritionDone }: QuickLogPanelProps) {
         <div className="flex items-center gap-2">
           <Droplet className="h-5 w-5 text-cyan-300" />
           <h2 className="text-sm font-semibold">Água</h2>
-          <span className="ml-auto text-xs text-zinc-500">+10 pts / 500ml · teto 50/dia</span>
+          <span className="ml-auto text-xs text-muted">+10 pts / 500ml · teto 50/dia</span>
         </div>
         <div className="grid grid-cols-2 gap-3">
           {WATER_PRESETS.map((ml) => (
@@ -98,7 +98,7 @@ export function QuickLogPanel({ nutritionDone }: QuickLogPanelProps) {
         <div className="flex items-center gap-2">
           <Dumbbell className="h-5 w-5 text-amber-300" />
           <h2 className="text-sm font-semibold">Exercício</h2>
-          <span className="ml-auto text-xs text-zinc-500">+1 pt / min · teto 90/dia</span>
+          <span className="ml-auto text-xs text-muted">+1 pt / min · teto 90/dia</span>
         </div>
         <div className="grid grid-cols-3 gap-3">
           {EXERCISE_PRESETS.map((min) => (
@@ -120,7 +120,7 @@ export function QuickLogPanel({ nutritionDone }: QuickLogPanelProps) {
         <div className="flex items-center gap-2">
           <Apple className="h-5 w-5 text-emerald-300" />
           <h2 className="text-sm font-semibold">Check-in nutricional</h2>
-          <span className="ml-auto text-xs text-zinc-500">1 por categoria/dia</span>
+          <span className="ml-auto text-xs text-muted">1 por categoria/dia</span>
         </div>
         <div className="space-y-2.5">
           {NUTRITION_CATEGORIES.map((category) => {
@@ -149,7 +149,7 @@ export function QuickLogPanel({ nutritionDone }: QuickLogPanelProps) {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold">{info.label}</span>
-                  <span className="block truncate text-xs text-zinc-500">{info.description}</span>
+                  <span className="block truncate text-xs text-muted">{info.description}</span>
                 </span>
                 <span
                   className={cn(
@@ -176,8 +176,8 @@ export function QuickLogPanel({ nutritionDone }: QuickLogPanelProps) {
           className={cn(
             "fixed inset-x-4 bottom-20 z-50 mx-auto flex max-w-md items-center gap-3 rounded-2xl border px-4 py-3 shadow-xl animate-pop",
             feedback.kind === "success"
-              ? "border-emerald-500/40 bg-zinc-900"
-              : "border-red-500/40 bg-zinc-900",
+              ? "border-emerald-500/40 bg-raised"
+              : "border-red-500/40 bg-raised",
           )}
         >
           {feedback.kind === "success" ? (
@@ -185,11 +185,11 @@ export function QuickLogPanel({ nutritionDone }: QuickLogPanelProps) {
           ) : (
             <Info className="h-5 w-5 shrink-0 text-red-400" />
           )}
-          <p className="flex-1 text-sm text-zinc-100">{feedback.text}</p>
+          <p className="flex-1 text-sm text-foreground">{feedback.text}</p>
           <button
             type="button"
             onClick={() => setFeedback(null)}
-            className="text-zinc-500 hover:text-zinc-200"
+            className="text-muted hover:text-fg-2"
             aria-label="Fechar"
           >
             <X className="h-4 w-4" />
