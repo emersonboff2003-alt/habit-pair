@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BellRing, CheckCircle2, Info, Loader2 } from "lucide-react";
+import { BellRing, BellOff, CheckCircle2, Info, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -204,11 +204,18 @@ export function NotificationSettings({ settings }: NotificationSettingsProps) {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-fg-2 transition-colors hover:bg-card-hover"
+          className={cn(
+            "inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card transition-colors hover:bg-card-hover",
+            draft.notifications_enabled ? "text-emerald-400" : "text-fg-2",
+          )}
           aria-label="Lembretes e notificações"
           title="Lembretes e notificações"
         >
-          <BellRing className="h-4 w-4" />
+          {draft.notifications_enabled ? (
+            <BellRing className="h-4 w-4" />
+          ) : (
+            <BellOff className="h-4 w-4" />
+          )}
         </button>
       </DialogTrigger>
 
