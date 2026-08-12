@@ -6,7 +6,8 @@
 //   - perfis Émerson & Ana, missões e recompensas seedadas
 //   - regras de gamificação do trigger handle_log_insert (pontos, tetos,
 //     nutrição única/dia, progresso de missões + crédito de pontos)
-//   - RPC redeem_reward (resgate atômico), expire/renew de missões
+//   - RPC redeem_reward (resgate atômico), activate_mission (ativação manual)
+//     e roll_missions (ciclo diário de missões: temporárias, parcial, renova)
 //
 // IMPORTANTE: os dados ficam em memória no processo do servidor Next e são
 // zerados a cada restart do `npm run dev`.
@@ -57,6 +58,26 @@ function newId(): string {
   return `mock-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function daysFromNow(days: number): string {
+  const d = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  return d.toISOString();
+}
+
+/** Início do dia daqui a N dias (UTC local, espelha o date_trunc do SQL). */
+function dayStartFromNow(days: number): string {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + days);
+  return d.toISOString();
+}
+
+/** Quando a missão voltará a ficar disponível após uma rodada (espelha o SQL). */
+function nextAvailableAt(mission: Mission): string {
+  if (mission.always_active || mission.duration_days === 1) return dayStartFromNow(1);
+  if (mission.is_temporary) return daysFromNow(2 + Math.floor(Math.random() * 6));
+  return daysFromNow(mission.duration_days);
+}
+
 // -----------------------------------------------------------------------------
 // Seeds (espelham o schema.sql; pontos de exemplo para testar a loja já)
 // -----------------------------------------------------------------------------
@@ -93,6 +114,10 @@ const MISSIONS: Mission[] = [
     reward_points: 50,
     is_cooperative: false,
     is_active: true,
+    always_active: true,
+    is_temporary: false,
+    stay_min_days: 1,
+    stay_max_days: 3,
     created_at: now(),
   },
   {
@@ -105,6 +130,10 @@ const MISSIONS: Mission[] = [
     reward_points: 90,
     is_cooperative: false,
     is_active: true,
+    always_active: false,
+    is_temporary: false,
+    stay_min_days: 1,
+    stay_max_days: 3,
     created_at: now(),
   },
   {
@@ -117,6 +146,10 @@ const MISSIONS: Mission[] = [
     reward_points: 100,
     is_cooperative: false,
     is_active: true,
+    always_active: false,
+    is_temporary: false,
+    stay_min_days: 1,
+    stay_max_days: 3,
     created_at: now(),
   },
   {
@@ -129,6 +162,10 @@ const MISSIONS: Mission[] = [
     reward_points: 200,
     is_cooperative: true,
     is_active: true,
+    always_active: false,
+    is_temporary: true,
+    stay_min_days: 1,
+    stay_max_days: 3,
     created_at: now(),
   },
   {
@@ -141,6 +178,10 @@ const MISSIONS: Mission[] = [
     reward_points: 120,
     is_cooperative: false,
     is_active: true,
+    always_active: false,
+    is_temporary: false,
+    stay_min_days: 1,
+    stay_max_days: 3,
     created_at: now(),
   },
   {
@@ -153,6 +194,10 @@ const MISSIONS: Mission[] = [
     reward_points: 180,
     is_cooperative: false,
     is_active: true,
+    always_active: false,
+    is_temporary: true,
+    stay_min_days: 1,
+    stay_max_days: 3,
     created_at: now(),
   },
   {
@@ -165,6 +210,10 @@ const MISSIONS: Mission[] = [
     reward_points: 140,
     is_cooperative: false,
     is_active: true,
+    always_active: false,
+    is_temporary: false,
+    stay_min_days: 1,
+    stay_max_days: 3,
     created_at: now(),
   },
   {
@@ -177,6 +226,10 @@ const MISSIONS: Mission[] = [
     reward_points: 160,
     is_cooperative: false,
     is_active: true,
+    always_active: false,
+    is_temporary: true,
+    stay_min_days: 1,
+    stay_max_days: 3,
     created_at: now(),
   },
   {
@@ -189,11 +242,16 @@ const MISSIONS: Mission[] = [
     reward_points: 260,
     is_cooperative: true,
     is_active: true,
+    always_active: false,
+    is_temporary: true,
+    stay_min_days: 1,
+    stay_max_days: 3,
     created_at: now(),
   },
 ];
 
 const USER_MISSIONS: UserMission[] = [
+  // Água (sempre ativa) inicia 'in_progress'; demais iniciam desativadas ('available').
   {
     id: newId(),
     user_id: "a0000000-0000-0000-0000-000000000001",
@@ -202,24 +260,33 @@ const USER_MISSIONS: UserMission[] = [
     status: "in_progress",
     started_at: now(),
     completed_at: null,
+    available_until: null,
+    points_awarded: 0,
+    next_available_at: null,
   },
   {
     id: newId(),
     user_id: "a0000000-0000-0000-0000-000000000001",
     mission_id: "b0000000-0000-0000-0000-000000000002",
     current_progress: 0,
-    status: "in_progress",
+    status: "available",
     started_at: now(),
     completed_at: null,
+    available_until: null,
+    points_awarded: 0,
+    next_available_at: null,
   },
   {
     id: newId(),
     user_id: "a0000000-0000-0000-0000-000000000001",
     mission_id: "b0000000-0000-0000-0000-000000000003",
     current_progress: 0,
-    status: "in_progress",
+    status: "available",
     started_at: now(),
     completed_at: null,
+    available_until: null,
+    points_awarded: 0,
+    next_available_at: null,
   },
   {
     id: newId(),
@@ -229,114 +296,153 @@ const USER_MISSIONS: UserMission[] = [
     status: "in_progress",
     started_at: now(),
     completed_at: null,
+    available_until: null,
+    points_awarded: 0,
+    next_available_at: null,
   },
   {
     id: newId(),
     user_id: "a0000000-0000-0000-0000-000000000002",
     mission_id: "b0000000-0000-0000-0000-000000000002",
     current_progress: 0,
-    status: "in_progress",
+    status: "available",
     started_at: now(),
     completed_at: null,
+    available_until: null,
+    points_awarded: 0,
+    next_available_at: null,
   },
   {
     id: newId(),
     user_id: "a0000000-0000-0000-0000-000000000002",
     mission_id: "b0000000-0000-0000-0000-000000000003",
     current_progress: 0,
-    status: "in_progress",
+    status: "available",
     started_at: now(),
     completed_at: null,
+    available_until: null,
+    points_awarded: 0,
+    next_available_at: null,
   },
   {
     id: newId(),
     user_id: null,
     mission_id: "b0000000-0000-0000-0000-000000000004",
     current_progress: 0,
-    status: "in_progress",
+    status: "available",
     started_at: now(),
     completed_at: null,
+    available_until: daysFromNow(2),
+    points_awarded: 0,
+    next_available_at: null,
   },
   {
     id: newId(),
     user_id: "a0000000-0000-0000-0000-000000000001",
     mission_id: "b0000000-0000-0000-0000-000000000005",
     current_progress: 0,
-    status: "in_progress",
+    status: "available",
     started_at: now(),
     completed_at: null,
+    available_until: null,
+    points_awarded: 0,
+    next_available_at: null,
   },
   {
     id: newId(),
     user_id: "a0000000-0000-0000-0000-000000000001",
     mission_id: "b0000000-0000-0000-0000-000000000006",
     current_progress: 0,
-    status: "in_progress",
+    status: "available",
     started_at: now(),
     completed_at: null,
+    available_until: daysFromNow(2),
+    points_awarded: 0,
+    next_available_at: null,
   },
   {
     id: newId(),
     user_id: "a0000000-0000-0000-0000-000000000001",
     mission_id: "b0000000-0000-0000-0000-000000000007",
     current_progress: 0,
-    status: "in_progress",
+    status: "available",
     started_at: now(),
     completed_at: null,
+    available_until: null,
+    points_awarded: 0,
+    next_available_at: null,
   },
   {
     id: newId(),
     user_id: "a0000000-0000-0000-0000-000000000001",
     mission_id: "b0000000-0000-0000-0000-000000000008",
     current_progress: 0,
-    status: "in_progress",
+    status: "available",
     started_at: now(),
     completed_at: null,
+    available_until: daysFromNow(3),
+    points_awarded: 0,
+    next_available_at: null,
   },
   {
     id: newId(),
     user_id: "a0000000-0000-0000-0000-000000000002",
     mission_id: "b0000000-0000-0000-0000-000000000005",
     current_progress: 0,
-    status: "in_progress",
+    status: "available",
     started_at: now(),
     completed_at: null,
+    available_until: null,
+    points_awarded: 0,
+    next_available_at: null,
   },
   {
     id: newId(),
     user_id: "a0000000-0000-0000-0000-000000000002",
     mission_id: "b0000000-0000-0000-0000-000000000006",
     current_progress: 0,
-    status: "in_progress",
+    status: "available",
     started_at: now(),
     completed_at: null,
+    available_until: daysFromNow(2),
+    points_awarded: 0,
+    next_available_at: null,
   },
   {
     id: newId(),
     user_id: "a0000000-0000-0000-0000-000000000002",
     mission_id: "b0000000-0000-0000-0000-000000000007",
     current_progress: 0,
-    status: "in_progress",
+    status: "available",
     started_at: now(),
     completed_at: null,
+    available_until: null,
+    points_awarded: 0,
+    next_available_at: null,
   },
   {
     id: newId(),
     user_id: "a0000000-0000-0000-0000-000000000002",
     mission_id: "b0000000-0000-0000-0000-000000000008",
     current_progress: 0,
-    status: "in_progress",
+    status: "available",
     started_at: now(),
     completed_at: null,
+    available_until: daysFromNow(3),
+    points_awarded: 0,
+    next_available_at: null,
   },
   {
     id: newId(),
     user_id: null,
     mission_id: "b0000000-0000-0000-0000-000000000009",
     current_progress: 0,
-    status: "in_progress",
+    status: "available",
     started_at: now(),
     completed_at: null,
+    available_until: daysFromNow(3),
+    points_awarded: 0,
+    next_available_at: null,
   },
 ];
 
@@ -694,6 +800,8 @@ function insertLog(payload: Record<string, unknown>): { data: Log | null; error:
     if (um.current_progress >= mission.target_value) {
       um.status = "completed";
       um.completed_at = now();
+      um.points_awarded = mission.reward_points;
+      um.next_available_at = nextAvailableAt(mission);
       if (mission.is_cooperative) {
         for (const profile of PROFILES) {
           profile.points_balance += mission.reward_points;
@@ -1176,35 +1284,171 @@ function rpcMock(
     });
   }
 
-  if (fn === "expire_stale_missions") {
-    let count = 0;
-    for (const um of USER_MISSIONS) {
-      const mission = MISSIONS.find((m) => m.id === um.mission_id);
-      if (!mission || um.status !== "in_progress") continue;
-      const deadline = new Date(um.started_at);
-      deadline.setDate(deadline.getDate() + mission.duration_days);
-      if (deadline < new Date()) {
-        um.status = "failed";
-        count++;
-      }
+  if (fn === "activate_mission") {
+    const missionId = args?.p_mission_id as string | undefined;
+    const userId = args?.p_user_id as string | undefined;
+    if (!missionId || !userId) {
+      return Promise.resolve({ data: { ok: false, error: "parametros_invalidos" }, error: null });
     }
-    return Promise.resolve({ data: count, error: null });
+
+    const mission = MISSIONS.find((m) => m.id === missionId);
+    if (!mission) {
+      return Promise.resolve({ data: { ok: false, error: "missao_nao_encontrada" }, error: null });
+    }
+    if (!mission.is_active) {
+      return Promise.resolve({ data: { ok: false, error: "missao_inativa" }, error: null });
+    }
+    if (mission.always_active) {
+      return Promise.resolve({ data: { ok: false, error: "missao_sempre_ativa" }, error: null });
+    }
+
+    const available = USER_MISSIONS.find(
+      (um) =>
+        um.mission_id === missionId &&
+        um.status === "available" &&
+        (um.user_id === userId || (um.user_id === null && mission.is_cooperative)),
+    );
+
+    if (!available) {
+      const already = USER_MISSIONS.some(
+        (um) => um.mission_id === missionId && (um.user_id === userId || mission.is_cooperative),
+      );
+      if (already) {
+        return Promise.resolve({ data: { ok: false, error: "missao_em_curso" }, error: null });
+      }
+      const um: UserMission = {
+        id: newId(),
+        user_id: mission.is_cooperative ? null : userId,
+        mission_id: missionId,
+        current_progress: 0,
+        status: "in_progress",
+        started_at: now(),
+        completed_at: null,
+        available_until: null,
+        points_awarded: 0,
+        next_available_at: null,
+      };
+      USER_MISSIONS.push(um);
+      return Promise.resolve({ data: { ok: true, user_mission_id: um.id }, error: null });
+    }
+
+    available.status = "in_progress";
+    available.started_at = now();
+    available.completed_at = null;
+    return Promise.resolve({ data: { ok: true, user_mission_id: available.id }, error: null });
   }
 
-  if (fn === "renew_daily_missions") {
-    let count = 0;
+  if (fn === "roll_missions") {
+    const nowIso = now();
+    const nowMs = Date.now();
+    let availableExpired = 0;
+    let partialCount = 0;
+    let partialPoints = 0;
+    let expired = 0;
+    let renewed = 0;
+
+    // 1) Temporárias disponíveis sem ativação: somem (voltam aleatoriamente depois).
     for (const um of USER_MISSIONS) {
       const mission = MISSIONS.find((m) => m.id === um.mission_id);
-      if (!mission || mission.duration_days !== 1) continue;
-      if ((um.status === "completed" || um.status === "failed") && um.started_at.slice(0, 10) < now().slice(0, 10)) {
-        um.status = "in_progress";
-        um.current_progress = 0;
-        um.started_at = now();
-        um.completed_at = null;
-        count++;
+      if (!mission || !mission.is_temporary || um.status !== "available") continue;
+      if (um.available_until && new Date(um.available_until) < new Date(nowMs)) {
+        um.status = "failed";
+        um.completed_at = nowIso;
+        um.next_available_at = daysFromNow(2 + Math.floor(Math.random() * 6));
+        availableExpired++;
       }
     }
-    return Promise.resolve({ data: count, error: null });
+
+    // 2) Temporárias ativadas e não concluídas a tempo: pontos proporcionais.
+    for (const um of USER_MISSIONS) {
+      const mission = MISSIONS.find((m) => m.id === um.mission_id);
+      if (!mission || !mission.is_temporary || um.status !== "in_progress") continue;
+      const durationDeadline = new Date(um.started_at);
+      durationDeadline.setDate(durationDeadline.getDate() + mission.duration_days);
+      const stayDeadline = um.available_until ? new Date(um.available_until) : durationDeadline;
+      const deadline = stayDeadline > durationDeadline ? stayDeadline : durationDeadline;
+      if (deadline >= new Date(nowMs)) continue;
+
+      const partial = Math.floor(
+        (um.current_progress / mission.target_value) * mission.reward_points,
+      );
+      if (partial > 0) {
+        const targets = mission.is_cooperative
+          ? PROFILES.map((p) => p.id)
+          : um.user_id
+            ? [um.user_id]
+            : [];
+        for (const id of targets) {
+          const profile = PROFILES.find((p) => p.id === id);
+          if (profile) {
+            profile.points_balance += partial;
+            profile.total_points_earned += partial;
+          }
+        }
+      }
+
+      um.status = "failed";
+      um.completed_at = nowIso;
+      um.points_awarded = partial;
+      um.next_available_at = daysFromNow(2 + Math.floor(Math.random() * 6));
+      partialCount++;
+      partialPoints += partial;
+    }
+
+    // 3) Missões comuns ativadas e vencidas: falham sem pontos (voltam depois).
+    //    Missões diárias voltam no dia seguinte; multi-dia após o próprio prazo.
+    for (const um of USER_MISSIONS) {
+      const mission = MISSIONS.find((m) => m.id === um.mission_id);
+      if (!mission || mission.is_temporary || um.status !== "in_progress") continue;
+      const deadline = new Date(um.started_at);
+      deadline.setDate(deadline.getDate() + mission.duration_days);
+      if (deadline < new Date(nowMs)) {
+        um.status = "failed";
+        um.completed_at = nowIso;
+        um.next_available_at =
+          mission.always_active || mission.duration_days === 1
+            ? dayStartFromNow(1)
+            : daysFromNow(mission.duration_days);
+        expired++;
+      }
+    }
+
+    // 4) Renovações: rodadas prontas (completed/failed) voltam.
+    for (const um of [...USER_MISSIONS]) {
+      const mission = MISSIONS.find((m) => m.id === um.mission_id);
+      if (!mission || (um.status !== "completed" && um.status !== "failed")) continue;
+      if (um.next_available_at && new Date(um.next_available_at) > new Date(nowMs)) continue;
+
+      if (mission.always_active) {
+        um.status = "in_progress";
+      } else {
+        um.status = "available";
+        if (mission.is_temporary) {
+          const min = Math.max(1, mission.stay_min_days || 1);
+          const max = Math.max(min, mission.stay_max_days || 3);
+          um.available_until = daysFromNow(min + Math.floor(Math.random() * (max - min + 1)));
+        } else {
+          um.available_until = null;
+        }
+      }
+      um.current_progress = 0;
+      um.started_at = nowIso;
+      um.completed_at = null;
+      um.next_available_at = null;
+      um.points_awarded = 0;
+      renewed++;
+    }
+
+    return Promise.resolve({
+      data: {
+        available_expired: availableExpired,
+        partial_missions: partialCount,
+        partial_points: partialPoints,
+        expired,
+        renewed,
+      } as Json,
+      error: null,
+    });
   }
 
   return Promise.resolve({ data: null, error: { message: `RPC "${fn}" não implementada no mock.` } });

@@ -5,8 +5,12 @@ export const dynamic = "force-dynamic";
 
 /**
  * Cron job da Vercel (/api/cron/check-missions):
- * 1) expira missões que passaram do prazo (duration_days) -> 'failed';
- * 2) renova as missões diárias (duration_days = 1) para a nova rodada do dia.
+ * gira o ciclo de missões (roll_missions):
+ * - temporárias disponíveis sem ativação somem;
+ * - temporárias ativadas e não concluídas recebem pontos proporcionais;
+ * - missões vencidas falham;
+ * - rodadas concluídas/falhas prontas voltam (água sempre ativa; demais
+ *   reaparecem 'available'; temporárias voltam aleatoriamente).
  * Agendado em vercel.json. Protegido por CRON_SECRET (Bearer token).
  */
 export async function GET(request: NextRequest) {
@@ -18,25 +22,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [expiredRes, renewedRes] = await Promise.all([
-      supabaseAdmin.rpc("expire_stale_missions"),
-      supabaseAdmin.rpc("renew_daily_missions"),
-    ]);
+    const { data, error } = await supabaseAdmin.rpc("roll_missions");
 
-    if (expiredRes.error) {
-      console.error("cron/check-missions: expire error", expiredRes.error);
-      return NextResponse.json({ error: expiredRes.error.message }, { status: 500 });
-    }
-    if (renewedRes.error) {
-      console.error("cron/check-missions: renew error", renewedRes.error);
-      return NextResponse.json({ error: renewedRes.error.message }, { status: 500 });
+    if (error) {
+      console.error("cron/check-missions: roll error", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({
-      ok: true,
-      expired: expiredRes.data,
-      renewed: renewedRes.data,
-    });
+    return NextResponse.json({ ok: true, ...(data as unknown as Record<string, unknown>) });
   } catch (e) {
     console.error("cron/check-missions", e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

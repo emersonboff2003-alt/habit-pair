@@ -8,7 +8,7 @@
 -- Tipos Enumerados
 -- -----------------------------------------------------------------------------
 CREATE TYPE log_type AS ENUM ('water', 'exercise', 'nutrition');
-CREATE TYPE mission_status AS ENUM ('in_progress', 'completed', 'failed');
+CREATE TYPE mission_status AS ENUM ('available', 'in_progress', 'completed', 'failed');
 CREATE TYPE reward_status AS ENUM ('available', 'redeemed', 'fulfilled');
 CREATE TYPE meal_slot AS ENUM ('breakfast', 'lunch', 'afternoon', 'dinner');
 
@@ -102,21 +102,29 @@ CREATE TABLE missions (
   reward_points INT NOT NULL,
   is_cooperative BOOLEAN DEFAULT FALSE,
   is_active BOOLEAN DEFAULT TRUE,
+  always_active BOOLEAN DEFAULT FALSE,
+  is_temporary BOOLEAN DEFAULT FALSE,
+  stay_min_days INT DEFAULT 1,
+  stay_max_days INT DEFAULT 3,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- -----------------------------------------------------------------------------
 -- Missões do Usuário
 -- user_id NULL quando a missão é cooperativa.
+-- status 'available' = visível mas desativada (aguardando ativação manual).
 -- -----------------------------------------------------------------------------
 CREATE TABLE user_missions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE, -- NULL se cooperativa
   mission_id UUID REFERENCES missions(id) ON DELETE CASCADE NOT NULL,
   current_progress INT DEFAULT 0,
-  status mission_status DEFAULT 'in_progress',
+  status mission_status DEFAULT 'available',
   started_at TIMESTAMPTZ DEFAULT NOW(),
-  completed_at TIMESTAMPTZ
+  completed_at TIMESTAMPTZ,
+  available_until TIMESTAMPTZ,
+  points_awarded INT DEFAULT 0,
+  next_available_at TIMESTAMPTZ
 );
 
 -- -----------------------------------------------------------------------------
@@ -255,7 +263,8 @@ BEGIN
   -- 4) Motor de missões: incrementa progresso nas missões ativas do tipo.
   FOR v_mission IN
     SELECT um.id AS um_id, m.id AS mission_id, m.target_value, m.reward_points,
-           m.is_cooperative, um.user_id AS um_user_id, um.current_progress
+           m.is_cooperative, m.always_active, m.is_temporary, m.duration_days,
+           um.user_id AS um_user_id, um.current_progress
       FROM user_missions um
       JOIN missions m ON m.id = um.mission_id
      WHERE m.target_type = NEW.type
@@ -271,7 +280,15 @@ BEGIN
     IF v_mission.current_progress >= v_mission.target_value THEN
       UPDATE user_missions
          SET status = 'completed',
-             completed_at = NOW()
+             completed_at = NOW(),
+             points_awarded = v_mission.reward_points,
+             next_available_at = CASE
+               WHEN v_mission.always_active OR v_mission.duration_days = 1
+                 THEN date_trunc('day', NOW()) + interval '1 day'
+               WHEN v_mission.is_temporary
+                 THEN NOW() + ((2 + floor(random() * 6))::int) * interval '1 day'
+               ELSE NOW() + make_interval(days => v_mission.duration_days)
+             END
        WHERE id = v_mission.um_id;
 
       -- Credita pontos da missão ao(s) perfil(is).
@@ -532,61 +549,231 @@ END;
 $$;
 
 -- =============================================================================
--- RPC: cron — expira missões que passaram do prazo (duration_days)
--- Retorna a quantidade de missões marcadas como 'failed'.
+-- RPC: gira o ciclo de missões (cron diário /api/cron/check-missions)
+-- -----------------------------------------------------------------------------
+-- 1) Temporárias que ficaram 'available' sem ativação até available_until: somem
+--    (ficam 'failed' e retornam aleatoriamente dias depois).
+-- 2) Temporárias ativadas ('in_progress') que passaram do prazo sem concluir:
+--    creditam pontos proporcionais ao progresso e saem da aba.
+-- 3) Missões comuns ativadas que venceram (started_at + duration_days): falham
+--    sem pontos (pontos proporcionais são exclusivos de temporárias).
+-- 4) Missões concluídas/falhas prontas (next_available_at vencido) voltam:
+--    água sempre ativa volta como 'in_progress'; demais voltam 'available'
+--    (temporárias com available_until aleatório no intervalo stay_min..stay_max).
+-- Retorna JSONB com estatísticas da rodada.
 -- =============================================================================
-CREATE OR REPLACE FUNCTION expire_stale_missions()
-RETURNS INT
+CREATE OR REPLACE FUNCTION roll_missions()
+RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  v_count INT;
+  v_available_expired INT := 0;
+  v_partial_count INT := 0;
+  v_partial_points INT := 0;
+  v_expired INT := 0;
+  v_renewed INT := 0;
+  v_um RECORD;
+  v_partial INT;
+  v_profile RECORD;
 BEGIN
-  WITH expired AS (
-    UPDATE user_missions um
-       SET status = 'failed'
-      FROM missions m
-     WHERE um.mission_id = m.id
-       AND um.status = 'in_progress'
-       AND um.started_at + make_interval(days => m.duration_days) < NOW()
-     RETURNING um.id
-  )
-  SELECT COUNT(*) INTO v_count FROM expired;
+  -- 1) Temporárias disponíveis que ninguém ativou: somem da aba.
+  UPDATE user_missions um
+     SET status = 'failed',
+         completed_at = NOW(),
+         next_available_at = NOW() + ((2 + floor(random() * 6))::int) * interval '1 day'
+    FROM missions m
+   WHERE um.mission_id = m.id
+     AND m.is_temporary = TRUE
+     AND um.status = 'available'
+     AND um.available_until IS NOT NULL
+     AND um.available_until < NOW();
+  GET DIAGNOSTICS v_available_expired = ROW_COUNT;
 
-  RETURN v_count;
+  -- 2) Temporárias ativadas que não concluíram a tempo: pontos proporcionais.
+  FOR v_um IN
+    SELECT um.id, um.user_id, um.current_progress,
+           m.target_value, m.reward_points, m.is_cooperative, m.duration_days,
+           COALESCE(um.available_until, um.started_at + make_interval(days => m.duration_days))
+             AS deadline
+      FROM user_missions um
+      JOIN missions m ON m.id = um.mission_id
+     WHERE m.is_temporary = TRUE
+       AND um.status = 'in_progress'
+       AND GREATEST(
+             COALESCE(um.available_until, um.started_at + make_interval(days => m.duration_days)),
+             um.started_at + make_interval(days => m.duration_days)
+           ) < NOW()
+  LOOP
+    v_partial := FLOOR(
+      v_um.current_progress::numeric / v_um.target_value::numeric * v_um.reward_points::numeric
+    )::int;
+
+    IF v_partial > 0 THEN
+      IF v_um.is_cooperative THEN
+        FOR v_profile IN SELECT id FROM profiles LOOP
+          UPDATE profiles
+             SET points_balance = points_balance + v_partial,
+                 total_points_earned = total_points_earned + v_partial
+           WHERE id = v_profile.id;
+        END LOOP;
+      ELSE
+        UPDATE profiles
+           SET points_balance = points_balance + v_partial,
+               total_points_earned = total_points_earned + v_partial
+         WHERE id = v_um.user_id;
+      END IF;
+    END IF;
+
+    UPDATE user_missions
+       SET status = 'failed',
+           completed_at = NOW(),
+           points_awarded = v_partial,
+           next_available_at = NOW() + ((2 + floor(random() * 6))::int) * interval '1 day'
+     WHERE id = v_um.id;
+
+    v_partial_count := v_partial_count + 1;
+    v_partial_points := v_partial_points + v_partial;
+  END LOOP;
+
+  -- 3) Missões comuns ativadas e vencidas: falham sem pontos.
+  --    Missões diárias voltam no dia seguinte; multi-dia após o próprio prazo.
+  UPDATE user_missions um
+     SET status = 'failed',
+         completed_at = NOW(),
+         next_available_at = CASE
+           WHEN m.always_active OR m.duration_days = 1
+             THEN date_trunc('day', NOW()) + interval '1 day'
+           ELSE NOW() + make_interval(days => m.duration_days)
+         END
+    FROM missions m
+   WHERE um.mission_id = m.id
+     AND m.is_temporary = FALSE
+     AND um.status = 'in_progress'
+     AND um.started_at + make_interval(days => m.duration_days) < NOW();
+  GET DIAGNOSTICS v_expired = ROW_COUNT;
+
+  -- 4) Renovações: rodadas concluídas/falhas prontas para voltar.
+  FOR v_um IN
+    SELECT um.id,
+           m.always_active, m.is_temporary,
+           GREATEST(COALESCE(m.stay_min_days, 1), 1) AS stay_min,
+           GREATEST(COALESCE(m.stay_max_days, 3), 1) AS stay_max
+      FROM user_missions um
+      JOIN missions m ON m.id = um.mission_id
+     WHERE um.status IN ('completed', 'failed')
+       AND COALESCE(um.next_available_at, NOW()) <= NOW()
+  LOOP
+    IF v_um.always_active THEN
+      UPDATE user_missions
+         SET status = 'in_progress',
+             current_progress = 0,
+             started_at = NOW(),
+             completed_at = NULL,
+             available_until = NULL,
+             next_available_at = NULL,
+             points_awarded = 0
+       WHERE id = v_um.id;
+    ELSIF v_um.is_temporary THEN
+      UPDATE user_missions
+         SET status = 'available',
+             current_progress = 0,
+             started_at = NOW(),
+             completed_at = NULL,
+             available_until = NOW()
+               + (v_um.stay_min + floor(random() * (v_um.stay_max - v_um.stay_min + 1))::int)
+                 * interval '1 day',
+             next_available_at = NULL,
+             points_awarded = 0
+       WHERE id = v_um.id;
+    ELSE
+      UPDATE user_missions
+         SET status = 'available',
+             current_progress = 0,
+             started_at = NOW(),
+             completed_at = NULL,
+             available_until = NULL,
+             next_available_at = NULL,
+             points_awarded = 0
+       WHERE id = v_um.id;
+    END IF;
+    v_renewed := v_renewed + 1;
+  END LOOP;
+
+  RETURN jsonb_build_object(
+    'available_expired', v_available_expired,
+    'partial_missions', v_partial_count,
+    'partial_points', v_partial_points,
+    'expired', v_expired,
+    'renewed', v_renewed
+  );
 END;
 $$;
 
 -- =============================================================================
--- RPC: cron — renova missões diárias (duration_days = 1)
--- Reseta missões de um dia já concluídas/falhadas para a nova rodada do dia.
--- Retorna a quantidade de missões renovadas.
+-- RPC: ativação manual de uma missão pelo usuário
+-- -----------------------------------------------------------------------------
+-- Só é possível ativar missão com status 'available'. Missões sempre ativas
+-- (água) não precisam de ativação. Se não existir vínculo do usuário ainda,
+-- cria a linha (individual ou a cooperativa compartilhada).
+-- Retorna JSONB com { ok, user_mission_id } ou { ok: false, error }.
 -- =============================================================================
-CREATE OR REPLACE FUNCTION renew_daily_missions()
-RETURNS INT
+CREATE OR REPLACE FUNCTION activate_mission(p_user_id UUID, p_mission_id UUID)
+RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  v_count INT;
+  v_mission RECORD;
+  v_um_id UUID;
 BEGIN
-  WITH renewed AS (
-    UPDATE user_missions um
-       SET status = 'in_progress',
-           current_progress = 0,
-           started_at = NOW(),
-           completed_at = NULL
-      FROM missions m
-     WHERE um.mission_id = m.id
-       AND m.duration_days = 1
-       AND um.status IN ('completed', 'failed')
-       AND um.started_at::date < CURRENT_DATE
-     RETURNING um.id
-  )
-  SELECT COUNT(*) INTO v_count FROM renewed;
+  SELECT * INTO v_mission FROM missions WHERE id = p_mission_id;
+  IF v_mission.id IS NULL THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'missao_nao_encontrada');
+  END IF;
+  IF v_mission.is_active = FALSE THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'missao_inativa');
+  END IF;
+  IF v_mission.always_active THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'missao_sempre_ativa');
+  END IF;
 
-  RETURN v_count;
+  SELECT id INTO v_um_id
+    FROM user_missions
+   WHERE mission_id = p_mission_id
+     AND status = 'available'
+     AND (user_id = p_user_id OR (user_id IS NULL AND v_mission.is_cooperative))
+   LIMIT 1;
+
+  IF v_um_id IS NULL THEN
+    -- Sem vínculo disponível: impede duplicatas e cria a rodada quando preciso.
+    IF EXISTS (
+      SELECT 1 FROM user_missions
+       WHERE mission_id = p_mission_id
+         AND (user_id = p_user_id OR v_mission.is_cooperative)
+    ) THEN
+      RETURN jsonb_build_object('ok', FALSE, 'error', 'missao_em_curso');
+    END IF;
+
+    INSERT INTO user_missions (user_id, mission_id, current_progress, status)
+    VALUES (
+      CASE WHEN v_mission.is_cooperative THEN NULL ELSE p_user_id END,
+      p_mission_id,
+      0,
+      'in_progress'
+    )
+    RETURNING id INTO v_um_id;
+
+    RETURN jsonb_build_object('ok', TRUE, 'user_mission_id', v_um_id);
+  END IF;
+
+  UPDATE user_missions
+     SET status = 'in_progress',
+         started_at = NOW(),
+         completed_at = NULL
+   WHERE id = v_um_id;
+
+  RETURN jsonb_build_object('ok', TRUE, 'user_mission_id', v_um_id);
 END;
 $$;
 
@@ -686,45 +873,60 @@ INSERT INTO exercise_types (id, name) VALUES
   ('e0000000-0000-0000-0000-000000000010', 'Dança');
 
 -- Catálogo de missões
-INSERT INTO missions (id, title, description, target_type, target_value, duration_days, reward_points, is_cooperative, is_active) VALUES
+-- always_active: água (fica sempre ativa e reseta todo dia).
+-- is_temporary: missões de pontos altos que aparecem por um tempo e voltam
+-- aleatoriamente (some se não ativadas; dá pontos proporcionais se ativadas
+-- e não concluídas).
+INSERT INTO missions (
+  id, title, description, target_type, target_value, duration_days,
+  reward_points, is_cooperative, is_active, always_active, is_temporary,
+  stay_min_days, stay_max_days
+) VALUES
   ('b0000000-0000-0000-0000-000000000001',
-   'Água do dia', 'Beba 2500ml de água hoje.', 'water', 2500, 1, 50, FALSE, TRUE),
+   'Água do dia', 'Beba 2500ml de água hoje.', 'water', 2500, 1, 50, FALSE, TRUE, TRUE, FALSE, 1, 3),
   ('b0000000-0000-0000-0000-000000000002',
-   'Treino do dia', 'Complete 90 minutos de atividade física hoje.', 'exercise', 90, 1, 90, FALSE, TRUE),
+   'Treino do dia', 'Complete 90 minutos de atividade física hoje.', 'exercise', 90, 1, 90, FALSE, TRUE, FALSE, FALSE, 1, 3),
   ('b0000000-0000-0000-0000-000000000003',
-   'Nutrição do dia', 'Registre as 4 refeições do dia (café, almoço, lanche e jantar).', 'nutrition', 4, 1, 100, FALSE, TRUE),
+   'Nutrição do dia', 'Registre as 4 refeições do dia (café, almoço, lanche e jantar).', 'nutrition', 4, 1, 100, FALSE, TRUE, FALSE, FALSE, 1, 3),
   ('b0000000-0000-0000-0000-000000000004',
-   'Hidratação em dupla (semana)', 'Juntos, bebam 17.500ml (2500ml/dia cada) em 7 dias.', 'water', 17500, 7, 200, TRUE, TRUE),
+   'Hidratação em dupla (semana)', 'Juntos, bebam 17.500ml (2500ml/dia cada) em 7 dias.', 'water', 17500, 7, 200, TRUE, TRUE, FALSE, TRUE, 1, 3),
   ('b0000000-0000-0000-0000-000000000005',
-   'Reto de 3 dias de treino', 'Complete 270 minutos de atividade física (90min/dia) em 3 dias.', 'exercise', 270, 3, 120, FALSE, TRUE),
+   'Reto de 3 dias de treino', 'Complete 270 minutos de atividade física (90min/dia) em 3 dias.', 'exercise', 270, 3, 120, FALSE, TRUE, FALSE, FALSE, 1, 3),
   ('b0000000-0000-0000-0000-000000000006',
-   'Semana em movimento', 'Complete 420 minutos de atividade física em 7 dias.', 'exercise', 420, 7, 180, FALSE, TRUE),
+   'Semana em movimento', 'Complete 420 minutos de atividade física em 7 dias.', 'exercise', 420, 7, 180, FALSE, TRUE, FALSE, TRUE, 1, 3),
   ('b0000000-0000-0000-0000-000000000007',
-   'Água da semana', 'Beba 15.000ml de água em 7 dias.', 'water', 15000, 7, 140, FALSE, TRUE),
+   'Água da semana', 'Beba 15.000ml de água em 7 dias.', 'water', 15000, 7, 140, FALSE, TRUE, FALSE, FALSE, 1, 3),
   ('b0000000-0000-0000-0000-000000000008',
-   'Nutrição na semana', 'Registre 20 refeições em 7 dias.', 'nutrition', 20, 7, 160, FALSE, TRUE),
+   'Nutrição na semana', 'Registre 20 refeições em 7 dias.', 'nutrition', 20, 7, 160, FALSE, TRUE, FALSE, TRUE, 1, 3),
   ('b0000000-0000-0000-0000-000000000009',
-   'Treino em dupla (semana)', 'Juntos, completem 700 minutos de atividade física em 7 dias.', 'exercise', 700, 7, 260, TRUE, TRUE);
+   'Treino em dupla (semana)', 'Juntos, completem 700 minutos de atividade física em 7 dias.', 'exercise', 700, 7, 260, TRUE, TRUE, FALSE, TRUE, 1, 3);
 
--- Missões iniciais dos usuários
-INSERT INTO user_missions (user_id, mission_id, current_progress, status) VALUES
-  ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 0, 'in_progress'),
-  ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000002', 0, 'in_progress'),
-  ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000003', 0, 'in_progress'),
-  ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000005', 0, 'in_progress'),
-  ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000006', 0, 'in_progress'),
-  ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000007', 0, 'in_progress'),
-  ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000008', 0, 'in_progress'),
-  ('a0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', 0, 'in_progress'),
-  ('a0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', 0, 'in_progress'),
-  ('a0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000003', 0, 'in_progress'),
-  ('a0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000005', 0, 'in_progress'),
-  ('a0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000006', 0, 'in_progress'),
-  ('a0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000007', 0, 'in_progress'),
-  ('a0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000008', 0, 'in_progress'),
+-- Vinculações iniciais.
+-- Água (sempre ativa) = 'in_progress'. Demais missões começam desativadas
+-- ('available'). Temporárias iniciam visíveis com available_until no futuro.
+
+INSERT INTO user_missions (
+  user_id, mission_id, current_progress, status, available_until
+) VALUES
+  -- Émerson
+  ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 0, 'in_progress', NULL),
+  ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000002', 0, 'available', NULL),
+  ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000003', 0, 'available', NULL),
+  ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000005', 0, 'available', NULL),
+  ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000007', 0, 'available', NULL),
+  ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000006', 0, 'available', NOW() + interval '2 days'),
+  ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000008', 0, 'available', NOW() + interval '3 days'),
+  -- Ana
+  ('a0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', 0, 'in_progress', NULL),
+  ('a0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', 0, 'available', NULL),
+  ('a0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000003', 0, 'available', NULL),
+  ('a0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000005', 0, 'available', NULL),
+  ('a0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000007', 0, 'available', NULL),
+  ('a0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000006', 0, 'available', NOW() + interval '2 days'),
+  ('a0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000008', 0, 'available', NOW() + interval '3 days'),
   -- Cooperativas (user_id NULL)
-  (NULL, 'b0000000-0000-0000-0000-000000000004', 0, 'in_progress'),
-  (NULL, 'b0000000-0000-0000-0000-000000000009', 0, 'in_progress');
+  (NULL, 'b0000000-0000-0000-0000-000000000004', 0, 'available', NOW() + interval '2 days'),
+  (NULL, 'b0000000-0000-0000-0000-000000000009', 0, 'available', NOW() + interval '3 days');
 
 -- Loja de recompensas
 INSERT INTO rewards (id, title, description, cost_points, created_by) VALUES
@@ -818,4 +1020,44 @@ ON CONFLICT (user_id) DO NOTHING;
 --   CREATE TABLE meal_logs (...); CREATE TABLE meal_log_items (...);
 --   ALTER TABLE logs ADD COLUMN IF NOT EXISTS exercise_type_id UUID REFERENCES exercise_types(id);
 --   (e depois CREATE OR REPLACE dos triggers/RPCs + seeds acima)
+--
+-- CICLO DE MISSÕES (início desativado / água sempre ativa / temporárias):
+-- -----------------------------------------------------------------------------
+-- Bancos criados ANTES desta versão precisam dos comandos abaixo no SQL Editor
+-- do Supabase (podem ser re-executados sem problema, na ordem):
+--
+--   ALTER TYPE mission_status ADD VALUE IF NOT EXISTS 'available';
+--
+--   ALTER TABLE missions ADD COLUMN IF NOT EXISTS always_active BOOLEAN DEFAULT FALSE;
+--   ALTER TABLE missions ADD COLUMN IF NOT EXISTS is_temporary BOOLEAN DEFAULT FALSE;
+--   ALTER TABLE missions ADD COLUMN IF NOT EXISTS stay_min_days INT DEFAULT 1;
+--   ALTER TABLE missions ADD COLUMN IF NOT EXISTS stay_max_days INT DEFAULT 3;
+--
+--   ALTER TABLE user_missions ADD COLUMN IF NOT EXISTS available_until TIMESTAMPTZ;
+--   ALTER TABLE user_missions ADD COLUMN IF NOT EXISTS points_awarded INT DEFAULT 0;
+--   ALTER TABLE user_missions ADD COLUMN IF NOT EXISTS next_available_at TIMESTAMPTZ;
+--
+--   UPDATE missions SET always_active = TRUE WHERE id = 'b0000000-0000-0000-0000-000000000001';
+--   UPDATE missions SET is_temporary = TRUE WHERE id IN (
+--     'b0000000-0000-0000-0000-000000000004',
+--     'b0000000-0000-0000-0000-000000000006',
+--     'b0000000-0000-0000-0000-000000000008',
+--     'b0000000-0000-0000-0000-000000000009'
+--   );
+--
+--   -- Água volta para 'in_progress'; as demais começam desativadas ('available').
+--   UPDATE user_missions um SET status = 'available'
+--     FROM missions m
+--    WHERE um.mission_id = m.id AND m.always_active = FALSE AND um.status = 'in_progress';
+--   UPDATE user_missions um SET status = 'in_progress'
+--     FROM missions m
+--    WHERE um.mission_id = m.id AND m.always_active = TRUE;
+--
+--   -- Temporárias que estavam 'available' nascem com prazo de permanência.
+--   UPDATE user_missions um SET available_until = NOW() + interval '2 days'
+--     FROM missions m
+--    WHERE um.mission_id = m.id AND m.is_temporary = TRUE AND um.available_until IS NULL;
+--
+--   (e depois aplique as CREATE OR REPLACE de handle_log_insert, roll_missions e
+--   activate_mission desta versão do schema.sql)
 -- =============================================================================

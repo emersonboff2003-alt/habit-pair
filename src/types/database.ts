@@ -3,7 +3,7 @@
 // =============================================================================
 
 export type LogType = "water" | "exercise" | "nutrition";
-export type MissionStatus = "in_progress" | "completed" | "failed";
+export type MissionStatus = "available" | "in_progress" | "completed" | "failed";
 export type RewardStatus = "available" | "redeemed" | "fulfilled";
 export type NutritionCategory = "macros" | "sweets" | "meals";
 export type MealSlot = "breakfast" | "lunch" | "afternoon" | "dinner";
@@ -133,6 +133,14 @@ export type Mission = {
   reward_points: number;
   is_cooperative: boolean;
   is_active: boolean;
+  /** Sempre ativa (ex.: água) — não depende de ativação manual. */
+  always_active: boolean;
+  /** Missão temporária: aparece por um tempo e volta aleatoriamente depois. */
+  is_temporary: boolean;
+  /** Janela de permanência mínima (dias) quando uma temporária reaparece. */
+  stay_min_days: number;
+  /** Janela de permanência máxima (dias) quando uma temporária reaparece. */
+  stay_max_days: number;
   created_at: string;
 }
 
@@ -144,6 +152,12 @@ export type UserMission = {
   status: MissionStatus;
   started_at: string;
   completed_at: string | null;
+  /** Temporárias: prazo limite para ativar/completar (some depois disso). */
+  available_until: string | null;
+  /** Pontos efetivamente creditados por esta rodada (completa ou parcial). */
+  points_awarded: number;
+  /** Quando a missão volta a ficar disponível (após concluída/falha). */
+  next_available_at: string | null;
 }
 
 export type Reward = {
@@ -385,13 +399,13 @@ export interface Database {
         };
         Returns: Json;
       };
-      expire_stale_missions: {
+      roll_missions: {
         Args: Record<PropertyKey, never>;
-        Returns: number;
+        Returns: Json;
       };
-      renew_daily_missions: {
-        Args: Record<PropertyKey, never>;
-        Returns: number;
+      activate_mission: {
+        Args: { p_user_id: string; p_mission_id: string };
+        Returns: Json;
       };
     };
     Enums: {
