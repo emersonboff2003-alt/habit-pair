@@ -4,10 +4,6 @@
     {
       "path": "/api/cron/check-missions",
       "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/send-reminders",
-      "schedule": "*/15 7-22 * * *"
     }
   ]
 }
