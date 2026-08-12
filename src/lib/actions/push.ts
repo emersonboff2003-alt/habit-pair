@@ -15,6 +15,11 @@ const MEAL_FIELDS = [
   "meal_dinner",
 ] as const;
 
+/** Converte "HH:MM:SS" (Postgres TIME) em "HH:MM"; devolve o valor se já estiver ok. */
+function normalizeTime(value: string): string {
+  return /^\d{2}:\d{2}(:\d{2})?$/.test(value) ? value.slice(0, 5) : value;
+}
+
 function validateTimes(times: string[]): boolean {
   return times.every((t) => TIME_PATTERN.test(t));
 }
@@ -81,15 +86,25 @@ export async function updateReminderSettingsAction(
     const profileId = await getSessionProfileId();
     if (!profileId) return { ok: false, error: "Sessão expirada. Selecione o perfil novamente." };
 
-    if (!Array.isArray(settings.water_times) || !validateTimes(settings.water_times)) {
+    const normalized: ReminderSettingsInput = {
+      ...settings,
+      water_times: (settings.water_times ?? []).map(normalizeTime),
+      meal_breakfast: normalizeTime(settings.meal_breakfast),
+      meal_lunch: normalizeTime(settings.meal_lunch),
+      meal_afternoon: normalizeTime(settings.meal_afternoon),
+      meal_dinner: normalizeTime(settings.meal_dinner),
+      exercise_time: normalizeTime(settings.exercise_time),
+    };
+
+    if (!Array.isArray(normalized.water_times) || !validateTimes(normalized.water_times)) {
       return { ok: false, error: "Horários de água inválidos." };
     }
     for (const field of MEAL_FIELDS) {
-      if (!TIME_PATTERN.test(settings[field])) {
+      if (!TIME_PATTERN.test(normalized[field])) {
         return { ok: false, error: "Horário de refeição inválido." };
       }
     }
-    if (!TIME_PATTERN.test(settings.exercise_time)) {
+    if (!TIME_PATTERN.test(normalized.exercise_time)) {
       return { ok: false, error: "Horário de exercício inválido." };
     }
 
@@ -97,7 +112,7 @@ export async function updateReminderSettingsAction(
       .from("reminder_settings")
       .upsert(
         {
-          ...settings,
+          ...normalized,
           user_id: profileId,
           updated_at: new Date().toISOString(),
         },

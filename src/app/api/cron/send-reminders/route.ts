@@ -14,9 +14,18 @@ function timeToMinutes(time: string): number {
   return (h ?? 0) * 60 + (m ?? 0);
 }
 
+const REMINDER_TIME_ZONE = "America/Sao_Paulo";
+
 function nowMinutes(): number {
-  const d = new Date();
-  return d.getHours() * 60 + d.getMinutes();
+  const parts = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: REMINDER_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+  const minute = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+  return hour * 60 + minute;
 }
 
 function withinWindow(config: string, nowMin: number): boolean {

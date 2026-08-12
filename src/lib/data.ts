@@ -235,7 +235,21 @@ export const getReminderSettings = cache(
       console.error("getReminderSettings", error);
       return null;
     }
-    return data ?? null;
+    if (!data) return null;
+
+    // O Postgres devolve TIME como "HH:MM:SS"; o app usa "HH:MM". Normaliza.
+    const normalizeTime = (value: string | null | undefined): string =>
+      value && /^\d{2}:\d{2}(:\d{2})?$/.test(value) ? value.slice(0, 5) : value ?? "";
+
+    return {
+      ...data,
+      water_times: (data.water_times ?? []).map(normalizeTime).filter(Boolean),
+      meal_breakfast: normalizeTime(data.meal_breakfast),
+      meal_lunch: normalizeTime(data.meal_lunch),
+      meal_afternoon: normalizeTime(data.meal_afternoon),
+      meal_dinner: normalizeTime(data.meal_dinner),
+      exercise_time: normalizeTime(data.exercise_time),
+    };
   },
 );
 

@@ -2,7 +2,9 @@ name: Send Reminders
 
 on:
   schedule:
-    - cron: "*/15 7-22 * * *"
+    # Horário do Brasil (UTC-3): 7h-22h no fuso local = 10h-23h e 0h-1h UTC.
+    - cron: "*/15 10-23 * * *"
+    - cron: "*/15 0-1 * * *"
   workflow_dispatch:
 
 jobs:
