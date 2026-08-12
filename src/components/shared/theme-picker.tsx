@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition } from "react";
 import { Palette, Check, Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -26,12 +26,15 @@ export function ThemePicker({ current }: ThemePickerProps) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [active, setActive] = useState(current);
+  const [syncedCurrent, setSyncedCurrent] = useState(current);
 
   // Se o perfil ativo mudar (ex.: troca de perfil sem recarregar), reflete a
-  // escolha salva do novo perfil no seletor.
-  useEffect(() => {
+  // escolha salva do novo perfil no seletor. Ajuste de estado durante a
+  // renderização (sem efeito) para acompanhar a prop sem cascatas.
+  if (syncedCurrent !== current) {
+    setSyncedCurrent(current);
     setActive(current);
-  }, [current]);
+  }
 
   function apply(theme: string) {
     const previous = active;

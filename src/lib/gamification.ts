@@ -1,4 +1,4 @@
-import type { Log, LogType, NutritionCategory } from "@/types/database";
+import type { Log, LogType, MealSlot, NutritionCategory } from "@/types/database";
 
 export const DAILY_LIMITS = {
   water: {
@@ -21,10 +21,49 @@ export const DAILY_LIMITS = {
 export const DAILY_TARGETS = {
   water: 2500,
   exercise: 90,
-  nutrition: 3,
+  nutrition: 4,
 } as const;
 
 export const NUTRITION_CATEGORIES: NutritionCategory[] = ["macros", "sweets", "meals"];
+
+export const MEAL_SLOTS: MealSlot[] = ["breakfast", "lunch", "afternoon", "dinner"];
+
+export const MEAL_SLOT_LABELS: Record<MealSlot, string> = {
+  breakfast: "Café da manhã",
+  lunch: "Almoço",
+  afternoon: "Lanche da tarde",
+  dinner: "Jantar",
+};
+
+/** Pontos fixos de uma refeição rápida (menos do que detalhar). */
+export const QUICK_MEAL_POINTS = 10;
+
+/** Quantidade mínima de itens para o bônus de "refeição completa". */
+export const COMPLETE_MEAL_MIN_ITEMS = 3;
+
+/** Bônus aplicado quando a refeição detalhada tem 3+ itens. */
+export const COMPLETE_MEAL_BONUS = 10;
+
+/** Pontos de um item livre (fora do catálogo). */
+export const CUSTOM_ITEM_POINTS = 5;
+
+/** Pontos fixos de um treino rápido (menos do que um treino detalhado). */
+export const QUICK_EXERCISE_POINTS = 20;
+
+/** Equivalência em minutos de um treino rápido para o progresso de missões. */
+export const QUICK_EXERCISE_MIN_EQUIV = 30;
+
+/** Categorias de alimentos, na ordem de exibição. */
+export const FOOD_CATEGORY_LABELS: Record<string, string> = {
+  grains: "Grãos e carboidratos",
+  protein: "Proteínas",
+  vegetables: "Legumes e verduras",
+  fruits: "Frutas",
+  dairy: "Laticínios",
+  beverages: "Bebidas",
+  sweets: "Doces e guloseimas",
+  ready_meals: "Pratos prontos",
+};
 
 export const NUTRITION_LABELS: Record<NutritionCategory, { label: string; description: string; points: number }> = {
   macros: {
@@ -134,7 +173,7 @@ export function validateLogValue(type: LogType, value: number): string | null {
 export interface DayTotals {
   waterMl: number;
   exerciseMin: number;
-  nutritionDone: NutritionCategory[];
+  nutritionDone: MealSlot[];
   waterPoints: number;
   exercisePoints: number;
   nutritionPoints: number;
@@ -153,16 +192,16 @@ export interface DayTotals {
 export function computeTodayTotals(logs: Log[]): DayTotals {
   let waterMl = 0;
   let exerciseMin = 0;
-  const nutritionDone = new Set<NutritionCategory>();
+  const nutritionSlots = new Set<MealSlot>();
 
   for (const log of logs) {
-    if (log.type === "water") waterMl += log.value;
-    else if (log.type === "exercise") exerciseMin += log.value;
-    else if (
-      log.type === "nutrition" &&
-      (log.description === "macros" || log.description === "sweets" || log.description === "meals")
-    ) {
-      nutritionDone.add(log.description as NutritionCategory);
+    if (log.type === "water") {
+      waterMl += log.value;
+    } else if (log.type === "exercise") {
+      exerciseMin += log.value;
+    } else if (log.type === "nutrition") {
+      const meal = parseMealDescription(log.description);
+      if (meal) nutritionSlots.add(meal.slot);
     }
   }
 
@@ -174,22 +213,23 @@ export function computeTodayTotals(logs: Log[]): DayTotals {
     calcPointsForLog("exercise", exerciseMin),
     DAILY_LIMITS.exercise.dailyCapPoints,
   );
-  const nutritionPoints = [...nutritionDone].reduce(
-    (sum, cat) => sum + NUTRITION_LABELS[cat].points,
-    0,
-  );
+  const nutritionPoints = logs
+    .filter((l) => l.type === "nutrition")
+    .reduce((sum, l) => sum + l.points_earned, 0);
+
+  const nutritionDone = MEAL_SLOTS.filter((slot) => nutritionSlots.has(slot));
 
   return {
     waterMl,
     exerciseMin,
-    nutritionDone: [...nutritionDone],
+    nutritionDone,
     waterPoints,
     exercisePoints,
     nutritionPoints,
     totalPointsToday: waterPoints + exercisePoints + nutritionPoints,
     waterPercent: Math.min(100, Math.round((waterMl / DAILY_TARGETS.water) * 100)),
     exercisePercent: Math.min(100, Math.round((exerciseMin / DAILY_TARGETS.exercise) * 100)),
-    nutritionPercent: Math.min(100, Math.round((nutritionDone.size / DAILY_TARGETS.nutrition) * 100)),
+    nutritionPercent: Math.min(100, Math.round((nutritionDone.length / DAILY_TARGETS.nutrition) * 100)),
     waterCapped: waterPoints >= DAILY_LIMITS.water.dailyCapPoints,
     exerciseCapped: exercisePoints >= DAILY_LIMITS.exercise.dailyCapPoints,
   };
@@ -206,4 +246,81 @@ export function isDailyCapReached(type: LogType, dayLogs: Log[]): boolean {
 /** Verifica se a categoria nutricional já foi registrada hoje. */
 export function isNutritionSlotTaken(dayLogs: Log[], category: NutritionCategory): boolean {
   return dayLogs.some((l) => l.type === "nutrition" && l.description === category);
+}
+
+/**
+ * Interpreta a description de um log de refeição ('meal:<slot>:<id>[:quick]').
+ * Retorna null para descriptions que não são de refeição.
+ */
+export function parseMealDescription(
+  description: string | null,
+): { slot: MealSlot; mealLogId: string; isQuick: boolean } | null {
+  if (!description || !description.startsWith("meal:")) return null;
+  const [slot, mealLogId, flag] = description.slice(5).split(":");
+  if (!isMealSlot(slot)) return null;
+  return {
+    slot,
+    mealLogId: mealLogId ?? "",
+    isQuick: flag === "quick",
+  };
+}
+
+export function isMealSlot(value: string | null | undefined): value is MealSlot {
+  return (
+    value === "breakfast" ||
+    value === "lunch" ||
+    value === "afternoon" ||
+    value === "dinner"
+  );
+}
+
+export interface MealItemPreview {
+  name: string;
+  portion: number;
+  points: number;
+}
+
+interface FoodLike {
+  id: string;
+  name: string;
+  points: number;
+}
+
+/**
+ * Calcula os pontos de uma refeição detalhada (preview e validação no cliente).
+ * Espelha a lógica da RPC insert_meal_log do banco.
+ */
+export function calcDetailedMealPoints(
+  items: { foodItemId?: string; customName?: string; portion?: number }[],
+  catalog: FoodLike[],
+): { points: number; itemCount: number; bonusApplied: boolean; items: MealItemPreview[] } {
+  let points = 0;
+  let itemCount = 0;
+  const previews: MealItemPreview[] = [];
+
+  for (const item of items) {
+    const portion = Math.max(1, Math.floor(item.portion ?? 1));
+    let itemPoints: number;
+    let name: string;
+
+    if (item.foodItemId) {
+      const food = catalog.find((f) => f.id === item.foodItemId);
+      if (!food) continue;
+      itemPoints = food.points;
+      name = food.name;
+    } else {
+      itemPoints = CUSTOM_ITEM_POINTS;
+      name = item.customName?.trim() || "Item livre";
+    }
+
+    const total = itemPoints * portion;
+    points += total;
+    itemCount += 1;
+    previews.push({ name, portion, points: total });
+  }
+
+  const bonusApplied = itemCount >= COMPLETE_MEAL_MIN_ITEMS;
+  if (bonusApplied) points += COMPLETE_MEAL_BONUS;
+
+  return { points, itemCount, bonusApplied, items: previews };
 }

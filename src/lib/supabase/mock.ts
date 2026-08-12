@@ -16,13 +16,23 @@ import type {
   Json,
   Log,
   LogType,
+  MealSlot,
   Mission,
   Profile,
   Redemption,
   Reward,
   UserMission,
 } from "@/types/database";
-import { calcPointsForLog, dailyCapFor } from "@/lib/gamification";
+import {
+  calcPointsForLog,
+  COMPLETE_MEAL_BONUS,
+  COMPLETE_MEAL_MIN_ITEMS,
+  CUSTOM_ITEM_POINTS,
+  dailyCapFor,
+  QUICK_EXERCISE_MIN_EQUIV,
+  QUICK_EXERCISE_POINTS,
+  QUICK_MEAL_POINTS,
+} from "@/lib/gamification";
 
 export function isMockMode(): boolean {
   return (
@@ -99,10 +109,10 @@ const MISSIONS: Mission[] = [
   },
   {
     id: "b0000000-0000-0000-0000-000000000003",
-    title: "Nutrição completa",
-    description: "Bata a meta de calorias, limite de doces e registre as refeições.",
+    title: "Nutrição do dia",
+    description: "Registre as 4 refeições do dia (café, almoço, lanche e jantar).",
     target_type: "nutrition",
-    target_value: 3,
+    target_value: 4,
     duration_days: 1,
     reward_points: 100,
     is_cooperative: false,
@@ -117,6 +127,66 @@ const MISSIONS: Mission[] = [
     target_value: 17500,
     duration_days: 7,
     reward_points: 200,
+    is_cooperative: true,
+    is_active: true,
+    created_at: now(),
+  },
+  {
+    id: "b0000000-0000-0000-0000-000000000005",
+    title: "Reto de 3 dias de treino",
+    description: "Complete 270 minutos de atividade física (90min/dia) em 3 dias.",
+    target_type: "exercise",
+    target_value: 270,
+    duration_days: 3,
+    reward_points: 120,
+    is_cooperative: false,
+    is_active: true,
+    created_at: now(),
+  },
+  {
+    id: "b0000000-0000-0000-0000-000000000006",
+    title: "Semana em movimento",
+    description: "Complete 420 minutos de atividade física em 7 dias.",
+    target_type: "exercise",
+    target_value: 420,
+    duration_days: 7,
+    reward_points: 180,
+    is_cooperative: false,
+    is_active: true,
+    created_at: now(),
+  },
+  {
+    id: "b0000000-0000-0000-0000-000000000007",
+    title: "Água da semana",
+    description: "Beba 15.000ml de água em 7 dias.",
+    target_type: "water",
+    target_value: 15000,
+    duration_days: 7,
+    reward_points: 140,
+    is_cooperative: false,
+    is_active: true,
+    created_at: now(),
+  },
+  {
+    id: "b0000000-0000-0000-0000-000000000008",
+    title: "Nutrição na semana",
+    description: "Registre 20 refeições em 7 dias.",
+    target_type: "nutrition",
+    target_value: 20,
+    duration_days: 7,
+    reward_points: 160,
+    is_cooperative: false,
+    is_active: true,
+    created_at: now(),
+  },
+  {
+    id: "b0000000-0000-0000-0000-000000000009",
+    title: "Treino em dupla (semana)",
+    description: "Juntos, completem 700 minutos de atividade física em 7 dias.",
+    target_type: "exercise",
+    target_value: 700,
+    duration_days: 7,
+    reward_points: 260,
     is_cooperative: true,
     is_active: true,
     created_at: now(),
@@ -187,6 +257,87 @@ const USER_MISSIONS: UserMission[] = [
     started_at: now(),
     completed_at: null,
   },
+  {
+    id: newId(),
+    user_id: "a0000000-0000-0000-0000-000000000001",
+    mission_id: "b0000000-0000-0000-0000-000000000005",
+    current_progress: 0,
+    status: "in_progress",
+    started_at: now(),
+    completed_at: null,
+  },
+  {
+    id: newId(),
+    user_id: "a0000000-0000-0000-0000-000000000001",
+    mission_id: "b0000000-0000-0000-0000-000000000006",
+    current_progress: 0,
+    status: "in_progress",
+    started_at: now(),
+    completed_at: null,
+  },
+  {
+    id: newId(),
+    user_id: "a0000000-0000-0000-0000-000000000001",
+    mission_id: "b0000000-0000-0000-0000-000000000007",
+    current_progress: 0,
+    status: "in_progress",
+    started_at: now(),
+    completed_at: null,
+  },
+  {
+    id: newId(),
+    user_id: "a0000000-0000-0000-0000-000000000001",
+    mission_id: "b0000000-0000-0000-0000-000000000008",
+    current_progress: 0,
+    status: "in_progress",
+    started_at: now(),
+    completed_at: null,
+  },
+  {
+    id: newId(),
+    user_id: "a0000000-0000-0000-0000-000000000002",
+    mission_id: "b0000000-0000-0000-0000-000000000005",
+    current_progress: 0,
+    status: "in_progress",
+    started_at: now(),
+    completed_at: null,
+  },
+  {
+    id: newId(),
+    user_id: "a0000000-0000-0000-0000-000000000002",
+    mission_id: "b0000000-0000-0000-0000-000000000006",
+    current_progress: 0,
+    status: "in_progress",
+    started_at: now(),
+    completed_at: null,
+  },
+  {
+    id: newId(),
+    user_id: "a0000000-0000-0000-0000-000000000002",
+    mission_id: "b0000000-0000-0000-0000-000000000007",
+    current_progress: 0,
+    status: "in_progress",
+    started_at: now(),
+    completed_at: null,
+  },
+  {
+    id: newId(),
+    user_id: "a0000000-0000-0000-0000-000000000002",
+    mission_id: "b0000000-0000-0000-0000-000000000008",
+    current_progress: 0,
+    status: "in_progress",
+    started_at: now(),
+    completed_at: null,
+  },
+  {
+    id: newId(),
+    user_id: null,
+    mission_id: "b0000000-0000-0000-0000-000000000009",
+    current_progress: 0,
+    status: "in_progress",
+    started_at: now(),
+    completed_at: null,
+  },
 ];
 
 const REWARDS: Reward[] = [
@@ -222,12 +373,226 @@ const REWARDS: Reward[] = [
     created_by: null,
     created_at: now(),
   },
+  {
+    id: "c0000000-0000-0000-0000-000000000005",
+    title: "Café da manhã na cama",
+    description: "O(a) parceiro(a) prepara seu café favorito e serve na cama.",
+    cost_points: 40,
+    created_by: null,
+    created_at: now(),
+  },
+  {
+    id: "c0000000-0000-0000-0000-000000000006",
+    title: "Escolher o filme da sessão",
+    description: "Você escolhe o filme/série sem discussão.",
+    cost_points: 50,
+    created_by: null,
+    created_at: now(),
+  },
+  {
+    id: "c0000000-0000-0000-0000-000000000007",
+    title: "Dia sem cozinhar",
+    description: "O(a) parceiro(a) cuida de todas as refeições do dia.",
+    cost_points: 110,
+    created_by: null,
+    created_at: now(),
+  },
+  {
+    id: "c0000000-0000-0000-0000-000000000008",
+    title: "Sobremesa da sua escolha",
+    description: "Escolha a sobremesa do dia, sem limites.",
+    cost_points: 60,
+    created_by: null,
+    created_at: now(),
+  },
+  {
+    id: "c0000000-0000-0000-0000-000000000009",
+    title: "Passeio no parque",
+    description: "Um passeio ao ar livre juntos, no seu ritmo.",
+    cost_points: 90,
+    created_by: null,
+    created_at: now(),
+  },
+  {
+    id: "c0000000-0000-0000-0000-000000000010",
+    title: "Férias do serviço doméstico",
+    description: "O(a) parceiro(a) assume todas as tarefas de casa por um dia.",
+    cost_points: 200,
+    created_by: null,
+    created_at: now(),
+  },
+  {
+    id: "c0000000-0000-0000-0000-000000000011",
+    title: "Rolezinho de bike",
+    description: "Um pedal juntos no fim de semana.",
+    cost_points: 100,
+    created_by: null,
+    created_at: now(),
+  },
+  {
+    id: "c0000000-0000-0000-0000-000000000012",
+    title: "Sessão de carinho de 15 min",
+    description: "15 minutos dedicados só a vocês dois, sem telas.",
+    cost_points: 70,
+    created_by: null,
+    created_at: now(),
+  },
 ];
 
+export interface FoodItemSeed {
+  id: string;
+  name: string;
+  category: string;
+  points: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+const FOOD_ITEMS: FoodItemSeed[] = [
+  { id: "d0000000-0000-0000-0000-000000000001", name: "Arroz", category: "grains", points: 10, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000002", name: "Arroz integral", category: "grains", points: 12, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000003", name: "Feijão", category: "grains", points: 8, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000004", name: "Pão integral", category: "grains", points: 8, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000005", name: "Pão francês", category: "grains", points: 5, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000006", name: "Tapioca", category: "grains", points: 8, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000007", name: "Batata", category: "grains", points: 7, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000008", name: "Macarrão", category: "grains", points: 8, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000009", name: "Aveia", category: "grains", points: 10, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000010", name: "Frango grelhado", category: "protein", points: 15, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000011", name: "Carne bovina", category: "protein", points: 15, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000012", name: "Peixe", category: "protein", points: 15, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000013", name: "Ovo", category: "protein", points: 10, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000014", name: "Lentilha", category: "protein", points: 10, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000015", name: "Grão-de-bico", category: "protein", points: 10, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000016", name: "Tofu", category: "protein", points: 10, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000017", name: "Salada verde", category: "vegetables", points: 10, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000018", name: "Brócolis", category: "vegetables", points: 12, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000019", name: "Legumes no vapor", category: "vegetables", points: 12, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000020", name: "Cenoura", category: "vegetables", points: 8, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000021", name: "Tomate", category: "vegetables", points: 5, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000022", name: "Abobrinha", category: "vegetables", points: 8, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000023", name: "Fruta", category: "fruits", points: 8, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000024", name: "Banana", category: "fruits", points: 8, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000025", name: "Iogurte", category: "dairy", points: 8, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000026", name: "Leite", category: "dairy", points: 6, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000027", name: "Queijo", category: "dairy", points: 8, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000028", name: "Café sem açúcar", category: "beverages", points: 3, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000029", name: "Suco natural", category: "beverages", points: 6, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000030", name: "Água de coco", category: "beverages", points: 5, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000031", name: "Chocolate", category: "sweets", points: 4, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000032", name: "Sobremesa", category: "sweets", points: 4, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000033", name: "Refrigerante", category: "sweets", points: 3, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000034", name: "Marmita caseira", category: "ready_meals", points: 12, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000035", name: "Comida rápida", category: "ready_meals", points: 3, is_active: true, created_at: now() },
+  { id: "d0000000-0000-0000-0000-000000000036", name: "Pizza", category: "ready_meals", points: 4, is_active: true, created_at: now() },
+];
+
+export interface ExerciseTypeSeed {
+  id: string;
+  name: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+const EXERCISE_TYPES: ExerciseTypeSeed[] = [
+  { id: "e0000000-0000-0000-0000-000000000001", name: "Corrida", is_active: true, created_at: now() },
+  { id: "e0000000-0000-0000-0000-000000000002", name: "Caminhada", is_active: true, created_at: now() },
+  { id: "e0000000-0000-0000-0000-000000000003", name: "Musculação", is_active: true, created_at: now() },
+  { id: "e0000000-0000-0000-0000-000000000004", name: "Bicicleta", is_active: true, created_at: now() },
+  { id: "e0000000-0000-0000-0000-000000000005", name: "Natação", is_active: true, created_at: now() },
+  { id: "e0000000-0000-0000-0000-000000000006", name: "HIIT", is_active: true, created_at: now() },
+  { id: "e0000000-0000-0000-0000-000000000007", name: "Yoga e Pilates", is_active: true, created_at: now() },
+  { id: "e0000000-0000-0000-0000-000000000008", name: "Futebol", is_active: true, created_at: now() },
+  { id: "e0000000-0000-0000-0000-000000000009", name: "Basquete", is_active: true, created_at: now() },
+  { id: "e0000000-0000-0000-0000-000000000010", name: "Dança", is_active: true, created_at: now() },
+];
+
+const MEAL_LOGS: MealLogSeed[] = [];
+const MEAL_LOG_ITEMS: MealLogItemSeed[] = [];
 const LOGS: Log[] = [];
 const REDEMPTIONS: Redemption[] = [];
+const PUSH_SUBSCRIPTIONS: Record<string, unknown>[] = [];
+const REMINDER_SENT_LOGS: Record<string, unknown>[] = [];
 
-type TableName = "profiles" | "logs" | "missions" | "user_missions" | "rewards" | "redemptions";
+export interface ReminderSettingsSeed {
+  user_id: string;
+  notifications_enabled: boolean;
+  water_enabled: boolean;
+  water_times: string[];
+  meal_enabled: boolean;
+  meal_breakfast: string;
+  meal_lunch: string;
+  meal_afternoon: string;
+  meal_dinner: string;
+  exercise_enabled: boolean;
+  exercise_time: string;
+  updated_at: string;
+}
+
+const REMINDER_SETTINGS: ReminderSettingsSeed[] = [
+  {
+    user_id: "a0000000-0000-0000-0000-000000000001",
+    notifications_enabled: false,
+    water_enabled: true,
+    water_times: ["09:00", "12:00", "15:00", "18:00", "21:00"],
+    meal_enabled: true,
+    meal_breakfast: "08:00",
+    meal_lunch: "12:30",
+    meal_afternoon: "16:00",
+    meal_dinner: "19:30",
+    exercise_enabled: true,
+    exercise_time: "18:00",
+    updated_at: now(),
+  },
+  {
+    user_id: "a0000000-0000-0000-0000-000000000002",
+    notifications_enabled: false,
+    water_enabled: true,
+    water_times: ["09:00", "12:00", "15:00", "18:00", "21:00"],
+    meal_enabled: true,
+    meal_breakfast: "08:00",
+    meal_lunch: "12:30",
+    meal_afternoon: "16:00",
+    meal_dinner: "19:30",
+    exercise_enabled: true,
+    exercise_time: "18:00",
+    updated_at: now(),
+  },
+];
+
+export interface MealLogSeed {
+  id: string;
+  user_id: string;
+  slot: MealSlot;
+  is_quick: boolean;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface MealLogItemSeed {
+  id: string;
+  meal_log_id: string;
+  food_item_id: string | null;
+  custom_name: string | null;
+  portion: number;
+  points: number;
+  created_at: string;
+}
+
+type TableName =
+  | "profiles"
+  | "logs"
+  | "missions"
+  | "user_missions"
+  | "rewards"
+  | "redemptions"
+  | "food_items"
+  | "meal_logs"
+  | "meal_log_items"
+  | "exercise_types"
+  | "push_subscriptions"
+  | "reminder_settings"
+  | "reminder_sent_logs";
 
 type Store = Record<TableName, Record<string, unknown>[]>;
 
@@ -239,6 +604,13 @@ function getStore(): Store {
     user_missions: USER_MISSIONS as unknown as Record<string, unknown>[],
     rewards: REWARDS as unknown as Record<string, unknown>[],
     redemptions: REDEMPTIONS as unknown as Record<string, unknown>[],
+    food_items: FOOD_ITEMS as unknown as Record<string, unknown>[],
+    meal_logs: MEAL_LOGS as unknown as Record<string, unknown>[],
+    meal_log_items: MEAL_LOG_ITEMS as unknown as Record<string, unknown>[],
+    exercise_types: EXERCISE_TYPES as unknown as Record<string, unknown>[],
+    push_subscriptions: PUSH_SUBSCRIPTIONS as unknown as Record<string, unknown>[],
+    reminder_settings: REMINDER_SETTINGS as unknown as Record<string, unknown>[],
+    reminder_sent_logs: REMINDER_SENT_LOGS as unknown as Record<string, unknown>[],
   };
 }
 
@@ -251,9 +623,10 @@ function insertLog(payload: Record<string, unknown>): { data: Log | null; error:
   const type = payload.type as LogType;
   const value = payload.value as number;
   const description = (payload.description as string) ?? null;
+  const exercise_type_id = (payload.exercise_type_id as string | null) ?? null;
 
   // 1) Nutrição: apenas 1 registro por categoria por dia.
-  if (type === "nutrition") {
+  if (type === "nutrition" && !description?.startsWith("meal:")) {
     const duplicate = LOGS.some(
       (l) =>
         l.user_id === user_id &&
@@ -272,11 +645,20 @@ function insertLog(payload: Record<string, unknown>): { data: Log | null; error:
   }
 
   // 2) Pontos respeitando o teto diário do tipo.
+  //    Refeições (meal:*) e treino rápido ('quick') chegam com pontos do servidor.
   const alreadyToday = LOGS.filter(
     (l) => l.user_id === user_id && l.type === type && l.created_at >= startOfToday(),
   ).reduce((sum, l) => sum + l.points_earned, 0);
   const cap = dailyCapFor(type);
-  const raw = calcPointsForLog(type, value, description);
+  let raw: number;
+  if (
+    (type === "nutrition" && description?.startsWith("meal:")) ||
+    (type === "exercise" && description === "quick")
+  ) {
+    raw = (payload.points_earned as number) ?? 0;
+  } else {
+    raw = calcPointsForLog(type, value, description);
+  }
   const pointsEarned = Math.max(0, Math.min(raw, cap - alreadyToday));
 
   const log: Log = {
@@ -286,6 +668,7 @@ function insertLog(payload: Record<string, unknown>): { data: Log | null; error:
     value,
     points_earned: pointsEarned,
     description,
+    exercise_type_id,
     created_at: now(),
   };
   LOGS.push(log);
@@ -360,7 +743,15 @@ function project(row: Row, cols: string): Row {
         const relTable = aliased ? m[2] : m[1];
         const inner = (aliased ? m[3] : m[2]).split(",").map((s) => s.trim());
         const fkKey =
-          relTable === "missions" ? "mission_id" : relTable === "rewards" ? "reward_id" : undefined;
+          relTable === "missions"
+            ? "mission_id"
+            : relTable === "rewards"
+              ? "reward_id"
+              : relTable === "meal_log_items"
+                ? "meal_log_id"
+                : relTable === "food_items"
+                  ? "food_item_id"
+                  : undefined;
         const refId = fkKey ? (row[fkKey] as string | null) : null;
         const ref = refId ? getStore()[relTable as TableName].find((r: Row) => r.id === refId) : undefined;
         out[relKey] = ref ? pick(ref, inner) : null;
@@ -388,8 +779,9 @@ function orClause(row: Row, filter: string): boolean {
 
 class MockBuilder {
   private table: TableName;
-  private mode: "select" | "insert" | "update";
+  private mode: "select" | "insert" | "update" | "upsert" | "delete";
   private payload?: Row;
+  private upsertOptions?: { onConflict?: string; ignoreDuplicates?: boolean };
   private cols = "*";
   private preds: ((r: Row) => boolean)[] = [];
   private orderCol?: string;
@@ -443,12 +835,12 @@ class MockBuilder {
     return this;
   }
 
-  single<T>() {
+  single() {
     this.singleMode = "single";
     return this as unknown as MockBuilder;
   }
 
-  maybeSingle<T>() {
+  maybeSingle() {
     this.singleMode = "maybe";
     return this as unknown as MockBuilder;
   }
@@ -459,9 +851,21 @@ class MockBuilder {
     return this;
   }
 
+  upsert(payload: Row, options?: { onConflict?: string; ignoreDuplicates?: boolean }) {
+    this.mode = "upsert";
+    this.payload = payload;
+    this.upsertOptions = options;
+    return this;
+  }
+
   update(payload: Row) {
     this.mode = "update";
     this.payload = payload;
+    return this;
+  }
+
+  delete() {
+    this.mode = "delete";
     return this;
   }
 
@@ -490,6 +894,34 @@ class MockBuilder {
       if (!row.created_at) row.created_at = now();
       getStore()[this.table].push(row);
       return { data: project(row, this.cols), error: null };
+    }
+
+    if (this.mode === "upsert") {
+      // Upsert respeitando a coluna de conflito (ex.: endpoint, user_id).
+      const conflictKey = this.upsertOptions?.onConflict;
+      const payload = this.payload ?? {};
+      if (conflictKey && payload[conflictKey] != null) {
+        const existing = getStore()[this.table].find((r) => r[conflictKey] === payload[conflictKey]);
+        if (existing) {
+          if (!this.upsertOptions?.ignoreDuplicates) {
+            Object.assign(existing, payload);
+          }
+          return { data: project(existing, this.cols), error: null };
+        }
+      }
+      const row: Row = { ...payload };
+      if (!row.id) row.id = newId();
+      if (!row.created_at) row.created_at = now();
+      getStore()[this.table].push(row);
+      return { data: project(row, this.cols), error: null };
+    }
+
+    if (this.mode === "delete") {
+      const rows = getStore()[this.table];
+      for (let i = rows.length - 1; i >= 0; i--) {
+        if (this.preds.every((p) => p(rows[i]))) rows.splice(i, 1);
+      }
+      return { data: null, error: null };
     }
 
     if (this.mode === "update") {
@@ -535,9 +967,15 @@ class MockBuilder {
 // RPCs mock
 // -----------------------------------------------------------------------------
 
+interface MealItemLike {
+  foodItemId?: string;
+  customName?: string;
+  portion?: number;
+}
+
 function rpcMock(
   fn: string,
-  args?: { p_user_id?: string; p_reward_id?: string },
+  args?: Record<string, unknown>,
 ): Promise<{ data: Json | number | null; error: MockError }> {
   if (fn === "redeem_reward") {
     const userId = args?.p_user_id;
@@ -564,6 +1002,176 @@ function rpcMock(
     REDEMPTIONS.push(redemption);
     return Promise.resolve({
       data: { ok: true, redemption_id: redemption.id, new_balance: profile.points_balance } as Json,
+      error: null,
+    });
+  }
+
+  if (fn === "insert_meal_log") {
+    const userId = args?.p_user_id as string;
+    const slot = args?.p_slot as MealSlot;
+    const isQuick = Boolean(args?.p_is_quick);
+    const items = (Array.isArray(args?.p_items) ? args?.p_items : []) as MealItemLike[];
+
+    if (!userId || !slot) {
+      return Promise.resolve({ data: { ok: false, error: "user_not_found" } as Json, error: null });
+    }
+
+    let points = 0;
+    let count = 0;
+
+    if (isQuick) {
+      const duplicate = MEAL_LOGS.some(
+        (m) =>
+          m.user_id === userId &&
+          m.slot === slot &&
+          m.is_quick &&
+          m.created_at >= startOfToday(),
+      );
+      if (duplicate) {
+        return Promise.resolve({
+          data: { ok: false, error: "refeicao_rapida_duplicada" } as Json,
+          error: null,
+        });
+      }
+      count = 1;
+      points = QUICK_MEAL_POINTS;
+    } else {
+      if (items.length === 0) {
+        return Promise.resolve({ data: { ok: false, error: "sem_itens" } as Json, error: null });
+      }
+      for (const item of items) {
+        const portion = Math.max(1, Math.floor(item.portion ?? 1));
+        let itemPoints: number;
+        if (item.foodItemId) {
+          const food = FOOD_ITEMS.find((f) => f.id === item.foodItemId && f.is_active);
+          if (!food) {
+            return Promise.resolve({ data: { ok: false, error: "item_invalido" } as Json, error: null });
+          }
+          itemPoints = food.points;
+        } else {
+          itemPoints = CUSTOM_ITEM_POINTS;
+        }
+        points += itemPoints * portion;
+        count += 1;
+      }
+      if (count >= COMPLETE_MEAL_MIN_ITEMS) {
+        points += COMPLETE_MEAL_BONUS;
+      }
+    }
+
+    const mealLog: MealLogSeed = {
+      id: newId(),
+      user_id: userId,
+      slot,
+      is_quick: isQuick,
+      notes: null,
+      created_at: now(),
+    };
+    MEAL_LOGS.push(mealLog);
+
+    if (!isQuick) {
+      for (const item of items) {
+        const portion = Math.max(1, Math.floor(item.portion ?? 1));
+        let itemPoints: number;
+        if (item.foodItemId) {
+          const food = FOOD_ITEMS.find((f) => f.id === item.foodItemId);
+          itemPoints = food ? food.points : CUSTOM_ITEM_POINTS;
+        } else {
+          itemPoints = CUSTOM_ITEM_POINTS;
+        }
+        MEAL_LOG_ITEMS.push({
+          id: newId(),
+          meal_log_id: mealLog.id,
+          food_item_id: item.foodItemId ?? null,
+          custom_name: item.customName ?? null,
+          portion,
+          points: itemPoints * portion,
+          created_at: now(),
+        });
+      }
+    }
+
+    const description = `meal:${slot}:${mealLog.id}${isQuick ? ":quick" : ""}`;
+    const res = insertLog({
+      user_id: userId,
+      type: "nutrition",
+      value: count,
+      points_earned: points,
+      description,
+    });
+    if (res.error) {
+      return Promise.resolve({ data: null, error: res.error });
+    }
+    return Promise.resolve({
+      data: {
+        ok: true,
+        points_earned: res.data?.points_earned ?? 0,
+        meal_log_id: mealLog.id,
+      } as Json,
+      error: null,
+    });
+  }
+
+  if (fn === "insert_exercise_log") {
+    const userId = args?.p_user_id as string;
+    const exerciseTypeId = (args?.p_exercise_type_id as string | null | undefined) ?? null;
+    const minutes = args?.p_minutes != null ? Number(args?.p_minutes) : null;
+    const distance = (args?.p_distance as string | null | undefined) ?? null;
+
+    if (!userId) {
+      return Promise.resolve({ data: { ok: false, error: "user_not_found" } as Json, error: null });
+    }
+
+    let points: number;
+    let value: number;
+    let description: string | null;
+
+    if (!exerciseTypeId) {
+      const duplicate = LOGS.some(
+        (l) =>
+          l.user_id === userId &&
+          l.type === "exercise" &&
+          l.description === "quick" &&
+          l.created_at >= startOfToday(),
+      );
+      if (duplicate) {
+        return Promise.resolve({
+          data: { ok: false, error: "treino_rapido_duplicado" } as Json,
+          error: null,
+        });
+      }
+      points = QUICK_EXERCISE_POINTS;
+      value = QUICK_EXERCISE_MIN_EQUIV;
+      description = "quick";
+    } else {
+      const valid = EXERCISE_TYPES.some((t) => t.id === exerciseTypeId && t.is_active);
+      if (!valid) {
+        return Promise.resolve({
+          data: { ok: false, error: "tipo_exercicio_invalido" } as Json,
+          error: null,
+        });
+      }
+      if (minutes == null || minutes <= 0 || minutes > 600) {
+        return Promise.resolve({ data: { ok: false, error: "minutos_invalidos" } as Json, error: null });
+      }
+      points = minutes;
+      value = minutes;
+      description = distance;
+    }
+
+    const res = insertLog({
+      user_id: userId,
+      type: "exercise",
+      value,
+      points_earned: points,
+      description,
+      exercise_type_id: exerciseTypeId,
+    });
+    if (res.error) {
+      return Promise.resolve({ data: null, error: res.error });
+    }
+    return Promise.resolve({
+      data: { ok: true, points_earned: res.data?.points_earned ?? 0 } as Json,
       error: null,
     });
   }
@@ -610,7 +1218,7 @@ export const mockClient = {
   from(table: TableName) {
     return new MockBuilder(table);
   },
-  rpc(fn: string, args?: { p_user_id?: string; p_reward_id?: string }) {
+  rpc(fn: string, args?: Record<string, unknown>) {
     return rpcMock(fn, args);
   },
 };

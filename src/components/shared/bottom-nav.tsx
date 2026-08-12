@@ -28,6 +28,7 @@ export function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
+              prefetch
               className={cn(
                 "flex min-w-[64px] flex-col items-center gap-1 rounded-xl px-3 pb-2 pt-1.5 text-[11px] font-medium transition-colors",
                 active ? "text-foreground" : "text-muted hover:text-fg-2",

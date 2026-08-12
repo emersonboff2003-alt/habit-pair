@@ -1,22 +1,31 @@
 "use client";
 
 import { useRef, useState, useTransition, useEffect } from "react";
-import { Check, Droplet, Dumbbell, Apple, CheckCircle2, Info, X } from "lucide-react";
-import { addLogAction } from "@/lib/actions/logs";
-import type { AddLogResult, NutritionCategory } from "@/types/database";
-import { NUTRITION_CATEGORIES, NUTRITION_LABELS } from "@/lib/gamification";
+import { Droplet, Dumbbell, CheckCircle2, Info, Zap, X } from "lucide-react";
+import { addLogAction, addQuickExerciseAction } from "@/lib/actions/logs";
+import { MealLogPanel } from "@/components/logs/meal-log-panel";
+import { ExerciseDetailDialog } from "@/components/logs/exercise-detail-dialog";
+import { QUICK_EXERCISE_POINTS } from "@/lib/gamification";
+import type { AddLogResult, ExerciseType, FoodItem, MealLog } from "@/types/database";
 import { cn } from "@/lib/utils";
 
 interface QuickLogPanelProps {
-  nutritionDone: NutritionCategory[];
+  foodItems: FoodItem[];
+  mealLogsToday: MealLog[];
+  exerciseTypes: ExerciseType[];
+  quickExerciseDone: boolean;
 }
 
 type Feedback = { kind: "success" | "error"; text: string } | null;
 
-const WATER_PRESETS = [500, 250];
-const EXERCISE_PRESETS = [15, 30, 45];
+const WATER_PRESETS = [250, 500, 750, 1000];
 
-export function QuickLogPanel({ nutritionDone }: QuickLogPanelProps) {
+export function QuickLogPanel({
+  foodItems,
+  mealLogsToday,
+  exerciseTypes,
+  quickExerciseDone,
+}: QuickLogPanelProps) {
   const [pending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<Feedback>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -33,40 +42,47 @@ export function QuickLogPanel({ nutritionDone }: QuickLogPanelProps) {
     timerRef.current = setTimeout(() => setFeedback(null), 4000);
   }
 
-  function handleLog(type: "water" | "exercise", value: number) {
+  function handleWater(ml: number) {
     startTransition(async () => {
-      const result: AddLogResult = await addLogAction({ type, value });
+      const result: AddLogResult = await addLogAction({ type: "water", value: ml });
       if (result.ok) {
         const missionText =
           result.completedMissionTitles && result.completedMissionTitles.length > 0
             ? ` · Missão concluída: ${result.completedMissionTitles.join(", ")}`
             : "";
-        notify({
-          kind: "success",
-          text: `+${result.pointsEarned} pts${missionText}`,
-        });
+        notify({ kind: "success", text: `+${result.pointsEarned} pts${missionText}` });
       } else {
         notify({ kind: "error", text: result.error ?? "Não foi possível registrar." });
       }
     });
   }
 
-  function handleNutrition(category: NutritionCategory) {
+  function handleQuickExercise() {
     startTransition(async () => {
-      const result: AddLogResult = await addLogAction({
-        type: "nutrition",
-        value: 1,
-        description: category,
-      });
+      const result: AddLogResult = await addQuickExerciseAction();
       if (result.ok) {
-        notify({ kind: "success", text: `+${result.pointsEarned} pts · Check-in registrado` });
+        const missionText =
+          result.completedMissionTitles && result.completedMissionTitles.length > 0
+            ? ` · Missão concluída: ${result.completedMissionTitles.join(", ")}`
+            : "";
+        notify({ kind: "success", text: `+${result.pointsEarned} pts · treino rápido${missionText}` });
       } else {
         notify({ kind: "error", text: result.error ?? "Não foi possível registrar." });
       }
     });
   }
 
-  const allDone = nutritionDone.length >= NUTRITION_CATEGORIES.length;
+  function handleExerciseResult(result: AddLogResult) {
+    if (result.ok) {
+      const missionText =
+        result.completedMissionTitles && result.completedMissionTitles.length > 0
+          ? ` · Missão concluída: ${result.completedMissionTitles.join(", ")}`
+          : "";
+      notify({ kind: "success", text: `+${result.pointsEarned} pts · treino registrado${missionText}` });
+    } else {
+      notify({ kind: "error", text: result.error ?? "Não foi possível registrar." });
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -81,7 +97,7 @@ export function QuickLogPanel({ nutritionDone }: QuickLogPanelProps) {
             <button
               key={ml}
               type="button"
-              onClick={() => handleLog("water", ml)}
+              onClick={() => handleWater(ml)}
               disabled={pending}
               className="flex h-16 flex-col items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-500/10 transition-colors hover:bg-cyan-500/20 active:scale-[0.98] disabled:opacity-50"
             >
@@ -98,77 +114,33 @@ export function QuickLogPanel({ nutritionDone }: QuickLogPanelProps) {
         <div className="flex items-center gap-2">
           <Dumbbell className="h-5 w-5 text-amber-300" />
           <h2 className="text-sm font-semibold">Exercício</h2>
-          <span className="ml-auto text-xs text-muted">+1 pt / min · teto 90/dia</span>
+          <span className="ml-auto text-xs text-muted">teto 90/dia</span>
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          {EXERCISE_PRESETS.map((min) => (
-            <button
-              key={min}
-              type="button"
-              onClick={() => handleLog("exercise", min)}
-              disabled={pending}
-              className="flex h-16 flex-col items-center justify-center rounded-2xl border border-amber-500/30 bg-amber-500/10 transition-colors hover:bg-amber-500/20 active:scale-[0.98] disabled:opacity-50"
-            >
-              <span className="text-lg font-bold text-amber-300">+{min}m</span>
-              <span className="text-[11px] text-amber-200/60">+{min} pts</span>
-            </button>
-          ))}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={handleQuickExercise}
+            disabled={pending || quickExerciseDone}
+            className={cn(
+              "flex h-16 flex-col items-center justify-center gap-0.5 rounded-2xl border transition-colors active:scale-[0.98] disabled:opacity-50",
+              quickExerciseDone
+                ? "border-amber-500/20 bg-amber-500/5"
+                : "border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20",
+            )}
+          >
+            <span className="flex items-center gap-1 text-sm font-bold text-amber-300">
+              <Zap className="h-4 w-4" />
+              {quickExerciseDone ? "Feito" : "Treino rápido"}
+            </span>
+            <span className="text-[11px] text-amber-200/60">
+              {quickExerciseDone ? "" : `+${QUICK_EXERCISE_POINTS} pts`}
+            </span>
+          </button>
+          <ExerciseDetailDialog exerciseTypes={exerciseTypes} onResult={handleExerciseResult} />
         </div>
       </div>
 
-      <div className="animate-fade-in-up space-y-3">
-        <div className="flex items-center gap-2">
-          <Apple className="h-5 w-5 text-emerald-300" />
-          <h2 className="text-sm font-semibold">Check-in nutricional</h2>
-          <span className="ml-auto text-xs text-muted">1 por categoria/dia</span>
-        </div>
-        <div className="space-y-2.5">
-          {NUTRITION_CATEGORIES.map((category) => {
-            const done = nutritionDone.includes(category);
-            const info = NUTRITION_LABELS[category];
-            return (
-              <button
-                key={category}
-                type="button"
-                onClick={() => handleNutrition(category)}
-                disabled={pending || done}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left transition-all active:scale-[0.99] disabled:cursor-not-allowed",
-                  done
-                    ? "border-emerald-500/40 bg-emerald-500/10 opacity-80"
-                    : "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/15",
-                )}
-              >
-                <span
-                  className={cn(
-                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-                    done ? "bg-emerald-500/25 text-emerald-300" : "bg-emerald-500/15 text-emerald-400",
-                  )}
-                >
-                  {done ? <Check className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold">{info.label}</span>
-                  <span className="block truncate text-xs text-muted">{info.description}</span>
-                </span>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
-                    done ? "bg-emerald-500/20 text-emerald-300" : "bg-emerald-500/15 text-emerald-300",
-                  )}
-                >
-                  {done ? "Feito" : `+${info.points} pts`}
-                </span>
-              </button>
-            );
-          })}
-          {allDone && (
-            <p className="text-center text-xs font-medium text-emerald-300">
-              Todas as metas nutricionais de hoje foram registradas!
-            </p>
-          )}
-        </div>
-      </div>
+      <MealLogPanel mealLogsToday={mealLogsToday} foodItems={foodItems} />
 
       {feedback && (
         <div

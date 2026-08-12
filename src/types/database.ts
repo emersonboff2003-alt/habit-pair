@@ -6,6 +6,16 @@ export type LogType = "water" | "exercise" | "nutrition";
 export type MissionStatus = "in_progress" | "completed" | "failed";
 export type RewardStatus = "available" | "redeemed" | "fulfilled";
 export type NutritionCategory = "macros" | "sweets" | "meals";
+export type MealSlot = "breakfast" | "lunch" | "afternoon" | "dinner";
+export type FoodCategory =
+  | "grains"
+  | "protein"
+  | "vegetables"
+  | "fruits"
+  | "dairy"
+  | "beverages"
+  | "sweets"
+  | "ready_meals";
 
 export type Json =
   | string
@@ -36,6 +46,80 @@ export type Log = {
   value: number;
   points_earned: number;
   description: string | null;
+  exercise_type_id: string | null;
+  created_at: string;
+}
+
+export type FoodItem = {
+  id: string;
+  name: string;
+  category: FoodCategory;
+  points: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export type MealLog = {
+  id: string;
+  user_id: string;
+  slot: MealSlot;
+  is_quick: boolean;
+  notes: string | null;
+  created_at: string;
+}
+
+export type MealLogItem = {
+  id: string;
+  meal_log_id: string;
+  food_item_id: string | null;
+  custom_name: string | null;
+  portion: number;
+  points: number;
+  created_at: string;
+}
+
+export interface MealLogItemWithFood extends MealLogItem {
+  food_item: { name: string } | null;
+}
+
+export interface MealLogWithItems extends MealLog {
+  meal_log_items: MealLogItemWithFood[];
+}
+
+export type ExerciseType = {
+  id: string;
+  name: string;
+  is_active: boolean;
+}
+
+export type PushSubscriptionRow = {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  keys: Json;
+  created_at: string;
+}
+
+export type ReminderSettings = {
+  user_id: string;
+  notifications_enabled: boolean;
+  water_enabled: boolean;
+  water_times: string[];
+  meal_enabled: boolean;
+  meal_breakfast: string;
+  meal_lunch: string;
+  meal_afternoon: string;
+  meal_dinner: string;
+  exercise_enabled: boolean;
+  exercise_time: string;
+  updated_at: string;
+}
+
+export type ReminderSentLog = {
+  id: string;
+  user_id: string;
+  reminder_key: string;
+  sent_date: string;
   created_at: string;
 }
 
@@ -97,6 +181,38 @@ export interface AddLogInput {
   description?: string | null;
 }
 
+export interface MealItemInput {
+  foodItemId?: string;
+  customName?: string;
+  portion?: number;
+}
+
+export interface InsertMealLogRpcResult {
+  ok: boolean;
+  error?: string;
+  points_earned?: number;
+  meal_log_id?: string;
+}
+
+export interface InsertExerciseLogRpcResult {
+  ok: boolean;
+  error?: string;
+  points_earned?: number;
+}
+
+export interface ReminderSettingsInput {
+  notifications_enabled: boolean;
+  water_enabled: boolean;
+  water_times: string[];
+  meal_enabled: boolean;
+  meal_breakfast: string;
+  meal_lunch: string;
+  meal_afternoon: string;
+  meal_dinner: string;
+  exercise_enabled: boolean;
+  exercise_time: string;
+}
+
 export interface AddLogResult {
   ok: boolean;
   pointsEarned: number;
@@ -137,7 +253,54 @@ export interface Database {
         Row: Log;
         Insert: Insertable<Log>;
         Update: Updatable<Log>;
+        Relationships: [
+          {
+            foreignKeyName: "logs_exercise_type_id_fkey",
+            columns: ["exercise_type_id"],
+            isOneToOne: false,
+            referencedRelation: "exercise_types",
+            referencedColumns: ["id"],
+          },
+        ];
+      };
+      exercise_types: {
+        Row: ExerciseType;
+        Insert: Insertable<ExerciseType>;
+        Update: Updatable<ExerciseType>;
         Relationships: [];
+      };
+      food_items: {
+        Row: FoodItem;
+        Insert: Insertable<FoodItem>;
+        Update: Updatable<FoodItem>;
+        Relationships: [];
+      };
+      meal_logs: {
+        Row: MealLog;
+        Insert: Insertable<MealLog>;
+        Update: Updatable<MealLog>;
+        Relationships: [];
+      };
+      meal_log_items: {
+        Row: MealLogItem;
+        Insert: Insertable<MealLogItem>;
+        Update: Updatable<MealLogItem>;
+        Relationships: [
+          {
+            foreignKeyName: "meal_log_items_meal_log_id_fkey",
+            columns: ["meal_log_id"],
+            isOneToOne: false,
+            referencedRelation: "meal_logs",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "meal_log_items_food_item_id_fkey",
+            columns: ["food_item_id"],
+            isOneToOne: false,
+            referencedRelation: "food_items",
+            referencedColumns: ["id"],
+          },
+        ];
       };
       missions: {
         Row: Mission;
@@ -179,11 +342,47 @@ export interface Database {
           },
         ];
       };
+      push_subscriptions: {
+        Row: PushSubscriptionRow;
+        Insert: Insertable<PushSubscriptionRow>;
+        Update: Updatable<PushSubscriptionRow>;
+        Relationships: [];
+      };
+      reminder_settings: {
+        Row: ReminderSettings;
+        Insert: Insertable<ReminderSettings>;
+        Update: Updatable<ReminderSettings>;
+        Relationships: [];
+      };
+      reminder_sent_logs: {
+        Row: ReminderSentLog;
+        Insert: Insertable<ReminderSentLog>;
+        Update: Updatable<ReminderSentLog>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
       redeem_reward: {
         Args: { p_user_id: string; p_reward_id: string };
+        Returns: Json;
+      };
+      insert_meal_log: {
+        Args: {
+          p_user_id: string;
+          p_slot: MealSlot;
+          p_is_quick: boolean;
+          p_items?: Json;
+        };
+        Returns: Json;
+      };
+      insert_exercise_log: {
+        Args: {
+          p_user_id: string;
+          p_exercise_type_id?: string | null;
+          p_minutes?: number | null;
+          p_distance?: string | null;
+        };
         Returns: Json;
       };
       expire_stale_missions: {

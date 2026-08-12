@@ -1,10 +1,11 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { Droplet, Dumbbell, Apple, Sparkles, Star } from "lucide-react";
 import { getSessionProfileId } from "@/lib/session";
 import { getProfiles, getTodayLogs } from "@/lib/data";
 import { computeTodayTotals, DAILY_TARGETS } from "@/lib/gamification";
 import { HabitCard } from "@/components/dashboard/habit-card";
-import { Leaderboard } from "@/components/dashboard/leaderboard";
+import { LeaderboardSection, LeaderboardSkeleton } from "@/components/dashboard/leaderboard-section";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,7 @@ export default async function DashboardPage() {
   const nutritionLabel =
     myTotals.nutritionDone.length >= DAILY_TARGETS.nutrition
       ? "Meta batida!"
-      : `${myTotals.nutritionDone.length}/${DAILY_TARGETS.nutrition} check-ins`;
+      : `${myTotals.nutritionDone.length}/${DAILY_TARGETS.nutrition} refeições`;
 
   return (
     <div className="space-y-4 animate-fade-in-up">
@@ -96,12 +97,12 @@ export default async function DashboardPage() {
           doneLabel={exerciseLabel}
         />
         <HabitCard
-          title="Nutrição"
+          title="Refeições"
           icon={Apple}
           accent="nutrition"
           value={myTotals.nutritionDone.length}
           target={DAILY_TARGETS.nutrition}
-          unit="check-ins"
+          unit="refeições"
           percent={myTotals.nutritionPercent}
           points={myTotals.nutritionPoints}
           capReached={myTotals.nutritionDone.length >= DAILY_TARGETS.nutrition}
@@ -109,12 +110,9 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <Leaderboard
-        entries={profiles.map((profile, index) => ({
-          profile,
-          todayPoints: totalsByUser[index]?.totalPointsToday ?? 0,
-        }))}
-      />
+      <Suspense fallback={<LeaderboardSkeleton />}>
+        <LeaderboardSection />
+      </Suspense>
     </div>
   );
 }

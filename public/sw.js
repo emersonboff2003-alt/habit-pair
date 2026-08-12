@@ -2,7 +2,7 @@
 
 // Bump a versão (ex.: v2) sempre que o app for atualizado para forçar
 // o navegador a instalar o service worker novo e limpar caches antigos.
-const CACHE_NAME = "habit-pair-v2";
+const CACHE_NAME = "habit-pair-v3";
 const CORE_ASSETS = [
   "/",
   "/select-profile",
@@ -76,4 +76,52 @@ self.addEventListener("fetch", (event) => {
       return cached || fetchPromise;
     }),
   );
+});
+
+// -----------------------------------------------------------------------------
+// Notificações Web Push
+// -----------------------------------------------------------------------------
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+
+  const title = data.title || "Habit Pair";
+  const options = {
+    body: data.body || "",
+    icon: "/icons/icon-192-maskable.png",
+    badge: "/icons/icon-192.png",
+    tag: data.tag || "habit-pair",
+    data: { url: data.url || "/logs" },
+    lang: "pt-BR",
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/logs";
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ("focus" in client) {
+          client.navigate(url).catch(() => client.focus());
+          return client.focus();
+        }
+      }
+      return self.clients
+        .matchAll({ type: "window" })
+        .then(() => self.clients.openWindow(url));
+    }),
+  );
+});
+
+self.addEventListener("notificationclose", (event) => {
+  event.notification.close();
 });
