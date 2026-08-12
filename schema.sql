@@ -233,15 +233,16 @@ BEGIN
       USING ERRCODE = 'P0001';
   END IF;
 
-  -- 2) Pontos respeitando o teto diário do tipo.
-  --    Refeições (meal:*) e treino rápido ('quick') chegam com pontos já
-  --    calculados no servidor; os demais tipos são calculados aqui.
-  SELECT COALESCE(SUM(points_earned), 0)
-    INTO v_already_today
-    FROM logs
-   WHERE user_id = NEW.user_id
-     AND type = NEW.type
-     AND created_at >= date_trunc('day', NOW());
+   -- 2) Pontos respeitando o teto diário do tipo.
+   --    Refeições (meal:*) e treino rápido ('quick') chegam com pontos já
+   --    calculados no servidor; os demais tipos são calculados aqui.
+   SELECT COALESCE(SUM(points_earned), 0)
+     INTO v_already_today
+     FROM logs
+    WHERE user_id = NEW.user_id
+      AND type = NEW.type
+      AND created_at >= date_trunc('day', NOW())
+    FOR UPDATE;  -- ADICIONADO PARA PREVENIR CONDIÇÃO DE CORRIDA
 
   v_cap := gamification_daily_cap(NEW.type);
   IF (NEW.type = 'nutrition' AND NEW.description LIKE 'meal:%')

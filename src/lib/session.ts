@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { getProfileById } from "@/lib/data";
 
 export const SESSION_COOKIE_NAME = "habit_session";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 dias
@@ -8,11 +9,21 @@ export async function getSessionProfileId(): Promise<string | null> {
   const cookieStore = await cookies();
   const value = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   if (!value) return null;
-  const id = decodeURIComponent(value);
-  // UUID v4/v5: 8-4-4-4-12 hex
+  
+  let id: string;
+  try {
+    id = decodeURIComponent(value).toLowerCase(); // Normalize to lowercase
+  } catch {
+    return null; // Invalid cookie value
+  }
+  
   const uuidRegex =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(id) ? id : null;
+  if (!uuidRegex.test(id)) return null;
+  
+  // CRITICAL VALIDATION: Verify profile actually exists
+  const profile = await getProfileById(id);
+  return profile ? id : null; // Return null if profile doesn't exist
 }
 
 /** Define o cookie de sessão com o perfil selecionado. */
