@@ -229,6 +229,10 @@ DECLARE
   v_mission RECORD;
   v_profile RECORD;
 BEGIN
+  -- Serializa inserções concorrentes do mesmo perfil (evita condição de corrida
+  -- no teto diário) travando a linha do perfil.
+  PERFORM 1 FROM profiles WHERE id = NEW.user_id FOR UPDATE;
+
   -- 1) Nutrição: apenas 1 registro por categoria por dia (macros/sweets/meals).
   --    Refeições (description 'meal:...') não passam por esta regra: múltiplas
   --    refeições detalhadas por dia são permitidas e o rápido é validado na RPC.
@@ -253,8 +257,7 @@ BEGIN
      FROM logs
     WHERE user_id = NEW.user_id
       AND type = NEW.type
-      AND created_at >= day_start_br()
-    FOR UPDATE;  -- ADICIONADO PARA PREVENIR CONDIÇÃO DE CORRIDA
+      AND created_at >= day_start_br();
 
   v_cap := gamification_daily_cap(NEW.type);
   IF (NEW.type = 'nutrition' AND NEW.description LIKE 'meal:%')

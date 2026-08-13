@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown, Loader2, LogOut, UserRound } from "lucide-react";
 import { logoutAction, switchProfileAction } from "@/lib/actions/session";
-import { DEFAULT_THEME } from "@/lib/themes";
 import type { Profile } from "@/types/database";
 import { cn, initials } from "@/lib/utils";
 
@@ -31,12 +30,21 @@ export function ProfileSwitcher({ current, profiles }: ProfileSwitcherProps) {
 
   async function handleSwitch(profileId: string) {
     setPendingProfile(profileId);
-    await switchProfileAction(profileId);
+    try {
+      const result = await switchProfileAction(profileId);
+      if (result && !result.ok) setPendingProfile(null);
+    } catch {
+      setPendingProfile(null);
+    }
   }
 
   async function handleLogout() {
     setPendingProfile("logout");
-    await logoutAction();
+    try {
+      await logoutAction();
+    } catch {
+      setPendingProfile(null);
+    }
   }
 
   const busy = pendingProfile !== null;
@@ -69,10 +77,7 @@ export function ProfileSwitcher({ current, profiles }: ProfileSwitcherProps) {
               <button
                 key={p.id}
                 type="button"
-                onClick={() => {
-                  document.documentElement.setAttribute("data-theme", p.theme);
-                  handleSwitch(p.id);
-                }}
+                onClick={() => handleSwitch(p.id)}
                 disabled={busy}
                 className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-fg-2 transition-colors hover:bg-raised disabled:opacity-50"
               >
@@ -91,10 +96,7 @@ export function ProfileSwitcher({ current, profiles }: ProfileSwitcherProps) {
             ))}
             <button
               type="button"
-              onClick={() => {
-                document.documentElement.setAttribute("data-theme", DEFAULT_THEME);
-                handleLogout();
-              }}
+              onClick={() => handleLogout()}
               disabled={busy}
               className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-300 transition-colors hover:bg-red-950/40 disabled:opacity-50"
             >
