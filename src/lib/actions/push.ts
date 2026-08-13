@@ -99,6 +99,9 @@ export async function updateReminderSettingsAction(
     if (!Array.isArray(normalized.water_times) || !validateTimes(normalized.water_times)) {
       return { ok: false, error: "Horários de água inválidos." };
     }
+    if (normalized.water_times.length > 12) {
+      return { ok: false, error: "Máximo de 12 horários de água." };
+    }
     for (const field of MEAL_FIELDS) {
       if (!TIME_PATTERN.test(normalized[field])) {
         return { ok: false, error: "Horário de refeição inválido." };
