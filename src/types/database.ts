@@ -36,6 +36,8 @@ export type Profile = {
   points_balance: number;
   total_points_earned: number;
   theme: string;
+  water_goal_ml: number;
+  exercise_goal_min: number;
   created_at: string;
 }
 
@@ -411,6 +413,10 @@ export interface Database {
       };
       delete_log: {
         Args: { p_user_id: string; p_log_id: string };
+        Returns: Json;
+      };
+      create_profile: {
+        Args: { p_name: string; p_theme?: string };
         Returns: Json;
       };
     };

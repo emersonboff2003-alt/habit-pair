@@ -24,6 +24,8 @@ CREATE TABLE profiles (
   points_balance INT DEFAULT 0 CHECK (points_balance >= 0),
   total_points_earned INT DEFAULT 0 CHECK (total_points_earned >= 0),
   theme VARCHAR(30) NOT NULL DEFAULT 'classic-dark',
+  water_goal_ml INT DEFAULT 2500 CHECK (water_goal_ml >= 500),
+  exercise_goal_min INT DEFAULT 90 CHECK (exercise_goal_min >= 5),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -868,6 +870,59 @@ END;
 $$;
 
 -- =============================================================================
+-- RPC: cria um novo perfil (e semeia missões + preferências de lembrete)
+-- -----------------------------------------------------------------------------
+-- Insere o perfil, cria reminder_settings e vínculos de missões individuais
+-- (água sempre ativa fica 'in_progress'; demais 'available'; temporárias com
+-- available_until). Missões cooperativas (user_id NULL) são compartilhadas e
+-- não precisam de vínculo novo.
+-- =============================================================================
+CREATE OR REPLACE FUNCTION create_profile(p_name TEXT, p_theme TEXT DEFAULT 'classic-dark')
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_profile_id UUID;
+  v_mission RECORD;
+BEGIN
+  IF p_name IS NULL OR length(trim(p_name)) = 0 THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'nome_invalido');
+  END IF;
+  IF length(trim(p_name)) > 50 THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'nome_muito_longo');
+  END IF;
+  IF EXISTS (SELECT 1 FROM profiles WHERE lower(name) = lower(trim(p_name))) THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'nome_duplicado');
+  END IF;
+
+  INSERT INTO profiles (name, theme)
+  VALUES (trim(p_name), COALESCE(p_theme, 'classic-dark'))
+  RETURNING id INTO v_profile_id;
+
+  INSERT INTO reminder_settings (user_id) VALUES (v_profile_id);
+
+  FOR v_mission IN
+    SELECT id, always_active, is_temporary
+      FROM missions
+     WHERE is_active = TRUE
+       AND is_cooperative = FALSE
+  LOOP
+    INSERT INTO user_missions (user_id, mission_id, current_progress, status, available_until)
+    VALUES (
+      v_profile_id,
+      v_mission.id,
+      0,
+      CASE WHEN v_mission.always_active THEN 'in_progress' ELSE 'available' END,
+      CASE WHEN v_mission.is_temporary THEN NOW() + interval '2 days' ELSE NULL END
+    );
+  END LOOP;
+
+  RETURN jsonb_build_object('ok', TRUE, 'profile_id', v_profile_id);
+END;
+$$;
+
+-- =============================================================================
 -- Row Level Security
 -- -----------------------------------------------------------------------------
 -- Todas as mutações acontecem no servidor (service role, que ignora RLS).
@@ -1172,4 +1227,9 @@ ON CONFLICT (user_id) DO NOTHING;
 -- -----------------------------------------------------------------------------
 -- Para o banco já existente, rode o CREATE OR REPLACE FUNCTION delete_log(...)
 -- desta versão do schema.sql (seção "RPC: desfaz/exclui um registro").
+--
+-- METAS PERSONALIZADAS POR PERFIL:
+-- -----------------------------------------------------------------------------
+--   ALTER TABLE profiles ADD COLUMN IF NOT EXISTS water_goal_ml INT DEFAULT 2500 CHECK (water_goal_ml >= 500);
+--   ALTER TABLE profiles ADD COLUMN IF NOT EXISTS exercise_goal_min INT DEFAULT 90 CHECK (exercise_goal_min >= 5);
 -- =============================================================================

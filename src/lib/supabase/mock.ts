@@ -89,6 +89,8 @@ const PROFILES: Profile[] = [
     points_balance: 120,
     total_points_earned: 120,
     theme: "classic-dark",
+    water_goal_ml: 2500,
+    exercise_goal_min: 90,
     created_at: now(),
   },
   {
@@ -98,6 +100,8 @@ const PROFILES: Profile[] = [
     points_balance: 60,
     total_points_earned: 60,
     theme: "classic-dark",
+    water_goal_ml: 2500,
+    exercise_goal_min: 90,
     created_at: now(),
   },
 ];
@@ -1336,6 +1340,66 @@ function rpcMock(
       } as Json,
       error: null,
     });
+  }
+
+  if (fn === "create_profile") {
+    const name = (args?.p_name as string | undefined)?.trim();
+    const theme = (args?.p_theme as string | undefined) || "classic-dark";
+    if (!name) {
+      return Promise.resolve({ data: { ok: false, error: "nome_invalido" }, error: null });
+    }
+    if (name.length > 50) {
+      return Promise.resolve({ data: { ok: false, error: "nome_muito_longo" }, error: null });
+    }
+    if (PROFILES.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
+      return Promise.resolve({ data: { ok: false, error: "nome_duplicado" }, error: null });
+    }
+
+    const profile: Profile = {
+      id: newId(),
+      name,
+      pin_hash: null,
+      points_balance: 0,
+      total_points_earned: 0,
+      theme,
+      water_goal_ml: 2500,
+      exercise_goal_min: 90,
+      created_at: now(),
+    };
+    PROFILES.push(profile);
+
+    REMINDER_SETTINGS.push({
+      user_id: profile.id,
+      notifications_enabled: false,
+      water_enabled: true,
+      water_times: ["09:00", "12:00", "15:00", "18:00", "21:00"],
+      meal_enabled: true,
+      meal_breakfast: "08:00",
+      meal_lunch: "12:30",
+      meal_afternoon: "16:00",
+      meal_dinner: "19:30",
+      exercise_enabled: true,
+      exercise_time: "18:00",
+      updated_at: now(),
+    });
+
+    for (const mission of MISSIONS) {
+      if (!mission.is_active || mission.is_cooperative) continue;
+      USER_MISSIONS.push({
+        id: newId(),
+        user_id: profile.id,
+        mission_id: mission.id,
+        current_progress: 0,
+        status: mission.always_active ? "in_progress" : "available",
+        started_at: now(),
+        completed_at: null,
+        available_until: mission.is_temporary ? daysFromNow(2) : null,
+        points_awarded: 0,
+        next_available_at: null,
+      });
+    }
+
+    return Promise.resolve({ data: { ok: true, profile_id: profile.id } as Json, error: null });
   }
 
   if (fn === "activate_mission") {

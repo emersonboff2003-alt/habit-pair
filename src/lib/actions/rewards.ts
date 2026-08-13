@@ -46,3 +46,64 @@ export async function redeemRewardAction(rewardId: string): Promise<RedeemReward
     return { ok: false, error: "Erro inesperado ao resgatar a recompensa." };
   }
 }
+
+/** Cria uma nova recompensa no catálogo (compartilhada entre os perfis). */
+export async function addRewardAction(
+  title: string,
+  description: string,
+  cost: number,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const profileId = await getSessionProfileId();
+    if (!profileId) return { ok: false, error: "Sessão expirada. Selecione o perfil novamente." };
+
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle || trimmedTitle.length > 100) {
+      return { ok: false, error: "Informe um título válido (máx. 100 caracteres)." };
+    }
+    if (!Number.isInteger(cost) || cost <= 0) {
+      return { ok: false, error: "Informe um custo em pontos válido." };
+    }
+
+    const { error } = await supabaseAdmin.from("rewards").insert({
+      title: trimmedTitle,
+      description: description.trim() || null,
+      cost_points: cost,
+      created_by: profileId,
+    });
+
+    if (error) {
+      console.error("addRewardAction: insert error", error);
+      return { ok: false, error: "Não foi possível criar a recompensa." };
+    }
+
+    revalidatePath("/store");
+    return { ok: true };
+  } catch (e) {
+    console.error("addRewardAction", e);
+    return { ok: false, error: "Erro inesperado ao criar a recompensa." };
+  }
+}
+
+/** Remove uma recompensa do catálogo. */
+export async function deleteRewardAction(rewardId: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const profileId = await getSessionProfileId();
+    if (!profileId) return { ok: false, error: "Sessão expirada. Selecione o perfil novamente." };
+
+    if (!rewardId) return { ok: false, error: "Recompensa inválida." };
+
+    const { error } = await supabaseAdmin.from("rewards").delete().eq("id", rewardId);
+
+    if (error) {
+      console.error("deleteRewardAction: delete error", error);
+      return { ok: false, error: "Não foi possível remover a recompensa." };
+    }
+
+    revalidatePath("/store");
+    return { ok: true };
+  } catch (e) {
+    console.error("deleteRewardAction", e);
+    return { ok: false, error: "Erro inesperado ao remover a recompensa." };
+  }
+}

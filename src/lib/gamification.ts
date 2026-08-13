@@ -189,8 +189,15 @@ export interface DayTotals {
 /**
  * Calcula os totais do dia a partir dos logs do usuário (já filtrados por dia).
  * Os pontos respeitam o teto diário conforme as regras de gamificação.
+ * As metas de água/exercício podem ser personalizadas por perfil.
  */
-export function computeTodayTotals(logs: Log[]): DayTotals {
+export function computeTodayTotals(
+  logs: Log[],
+  targets?: { water: number; exercise: number },
+): DayTotals {
+  const waterTarget = targets?.water ?? DAILY_TARGETS.water;
+  const exerciseTarget = targets?.exercise ?? DAILY_TARGETS.exercise;
+
   let waterMl = 0;
   let exerciseMin = 0;
   const nutritionSlots = new Set<MealSlot>();
@@ -226,8 +233,8 @@ export function computeTodayTotals(logs: Log[]): DayTotals {
     exercisePoints,
     nutritionPoints,
     totalPointsToday: waterPoints + exercisePoints + nutritionPoints,
-    waterPercent: Math.min(100, Math.round((waterMl / DAILY_TARGETS.water) * 100)),
-    exercisePercent: Math.min(100, Math.round((exerciseMin / DAILY_TARGETS.exercise) * 100)),
+    waterPercent: Math.min(100, Math.round((waterMl / waterTarget) * 100)),
+    exercisePercent: Math.min(100, Math.round((exerciseMin / exerciseTarget) * 100)),
     nutritionPercent: Math.min(100, Math.round((nutritionDone.length / DAILY_TARGETS.nutrition) * 100)),
     waterCapped: waterPoints >= DAILY_LIMITS.water.dailyCapPoints,
     exerciseCapped: exercisePoints >= DAILY_LIMITS.exercise.dailyCapPoints,

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Download } from "lucide-react";
 import { getSessionProfileId } from "@/lib/session";
 import { getExerciseTypes, getLogsForRange, getMealLogsForRange } from "@/lib/data";
 import { HistoryView } from "@/components/history/history-view";
@@ -71,9 +72,19 @@ export default async function HistoryPage({
 
   return (
     <div className="space-y-6 animate-fade-in-up">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight">Histórico</h1>
-        <p className="text-sm text-muted">Veja o que você fez em cada dia.</p>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">Histórico</h1>
+          <p className="text-sm text-muted">Veja o que você fez em cada dia.</p>
+        </div>
+        <a
+          href="/api/export"
+          download
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-fg-2 transition-colors hover:bg-raised"
+        >
+          <Download className="h-3.5 w-3.5" />
+          Exportar CSV
+        </a>
       </div>
 
       <HistoryView

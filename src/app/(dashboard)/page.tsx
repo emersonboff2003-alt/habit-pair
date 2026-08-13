@@ -6,6 +6,7 @@ import { getProfiles, getTodayLogs, getLogsForRange } from "@/lib/data";
 import { computeTodayTotals, computeStreak, DAILY_TARGETS } from "@/lib/gamification";
 import { dateKeyInTimeZone, dayStartToUtc, hourInTimeZone, shiftDateKey } from "@/lib/utils";
 import { HabitCard } from "@/components/dashboard/habit-card";
+import { GoalsDialog } from "@/components/dashboard/goals-dialog";
 import { LeaderboardSection, LeaderboardSkeleton } from "@/components/dashboard/leaderboard-section";
 
 export const dynamic = "force-dynamic";
@@ -26,16 +27,19 @@ export default async function DashboardPage() {
   if (!current) redirect("/select-profile");
 
   const logsByUser = await Promise.all(profiles.map((p) => getTodayLogs(p.id)));
-  const totalsByUser = logsByUser.map((logs) => computeTodayTotals(logs));
   const currentIndex = profiles.findIndex((p) => p.id === profileId);
-  const myTotals = totalsByUser[currentIndex] ?? computeTodayTotals([]);
+  const myGoals = {
+    water: current.water_goal_ml ?? DAILY_TARGETS.water,
+    exercise: current.exercise_goal_min ?? DAILY_TARGETS.exercise,
+  };
+  const myTotals = computeTodayTotals(logsByUser[currentIndex] ?? [], myGoals);
 
   const streakFrom = dayStartToUtc(shiftDateKey(dateKeyInTimeZone(), -90));
   const streakLogs = await getLogsForRange(profileId, streakFrom, new Date().toISOString());
   const streak = computeStreak(streakLogs);
 
-  const waterLabel = `${myTotals.waterMl.toLocaleString("pt-BR")} / ${DAILY_TARGETS.water.toLocaleString("pt-BR")} ml`;
-  const exerciseLabel = `${myTotals.exerciseMin} / ${DAILY_TARGETS.exercise} min`;
+  const waterLabel = `${myTotals.waterMl.toLocaleString("pt-BR")} / ${myGoals.water.toLocaleString("pt-BR")} ml`;
+  const exerciseLabel = `${myTotals.exerciseMin} / ${myGoals.exercise} min`;
   const nutritionLabel =
     myTotals.nutritionDone.length >= DAILY_TARGETS.nutrition
       ? "Meta batida!"
@@ -86,12 +90,16 @@ export default async function DashboardPage() {
 
       {/* Progresso do dia */}
       <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-muted">Hoje</h2>
+          <GoalsDialog waterGoal={myGoals.water} exerciseGoal={myGoals.exercise} />
+        </div>
         <HabitCard
           title="Água"
           icon={Droplet}
           accent="water"
           value={myTotals.waterMl}
-          target={DAILY_TARGETS.water}
+          target={myGoals.water}
           unit="ml"
           percent={myTotals.waterPercent}
           points={myTotals.waterPoints}
@@ -103,7 +111,7 @@ export default async function DashboardPage() {
           icon={Dumbbell}
           accent="exercise"
           value={myTotals.exerciseMin}
-          target={DAILY_TARGETS.exercise}
+          target={myGoals.exercise}
           unit="min"
           percent={myTotals.exercisePercent}
           points={myTotals.exercisePoints}

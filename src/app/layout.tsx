@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { PwaRegister } from "@/components/shared/pwa-register";
 import { ThemeSetter } from "@/components/shared/theme-setter";
+import { Onboarding } from "@/components/shared/onboarding";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeSetter />
         {children}
         <PwaRegister />
+        <Onboarding />
       </body>
     </html>
   );

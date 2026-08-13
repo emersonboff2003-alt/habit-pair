@@ -4,6 +4,8 @@ import { getSessionProfileId } from "@/lib/session";
 import { getProfileById, getRewards, getRedemptions } from "@/lib/data";
 import { RewardCard } from "@/components/store/reward-card";
 import { RedemptionList } from "@/components/store/redemption-list";
+import { AddRewardDialog } from "@/components/store/add-reward-dialog";
+import { DeleteRewardButton } from "@/components/store/delete-reward-button";
 
 export const dynamic = "force-dynamic";
 
@@ -35,12 +37,18 @@ export default async function StorePage() {
         <div className="flex items-center gap-2">
           <Gift className="h-4 w-4 text-violet-400" />
           <h2 className="text-sm font-semibold">Loja</h2>
+          <AddRewardDialog />
         </div>
         {rewards.length === 0 ? (
           <p className="text-sm text-muted">Nenhuma recompensa cadastrada.</p>
         ) : (
           rewards.map((reward) => (
-            <RewardCard key={reward.id} reward={reward} balance={current.points_balance} />
+            <div key={reward.id} className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <RewardCard reward={reward} balance={current.points_balance} />
+              </div>
+              <DeleteRewardButton rewardId={reward.id} />
+            </div>
           ))
         )}
       </section>

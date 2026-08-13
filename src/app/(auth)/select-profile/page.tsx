@@ -3,6 +3,7 @@ import { Sparkles } from "lucide-react";
 import { supabaseAnon } from "@/lib/supabase/server";
 import { getSessionProfileId } from "@/lib/session";
 import { ProfileCard } from "@/components/auth/profile-card";
+import { CreateProfileCard } from "@/components/auth/create-profile-card";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,7 @@ export default async function SelectProfilePage() {
           {profiles.map((profile) => (
             <ProfileCard key={profile.id} profile={profile} />
           ))}
+          <CreateProfileCard />
         </div>
       ) : (
         <p className="text-sm text-muted">
