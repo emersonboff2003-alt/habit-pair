@@ -25,8 +25,12 @@ function getSeenSnapshot(): boolean {
   }
 }
 
+// No servidor (SSR), assume já visto para não renderizar o diálogo durante a
+// pré-renderização. No cliente, o valor real vem de getSeenSnapshot.
+const getServerSnapshot = () => true;
+
 export function Onboarding() {
-  const seen = useSyncExternalStore(emptySubscribe, getSeenSnapshot);
+  const seen = useSyncExternalStore(emptySubscribe, getSeenSnapshot, getServerSnapshot);
   const [dismissed, setDismissed] = useState(false);
 
   const open = !seen && !dismissed;
