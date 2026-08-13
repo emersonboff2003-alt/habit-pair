@@ -913,7 +913,7 @@ BEGIN
       v_profile_id,
       v_mission.id,
       0,
-      CASE WHEN v_mission.always_active THEN 'in_progress' ELSE 'available' END,
+      CASE WHEN v_mission.always_active THEN 'in_progress' ELSE 'available' END::mission_status,
       CASE WHEN v_mission.is_temporary THEN NOW() + interval '2 days' ELSE NULL END
     );
   END LOOP;
