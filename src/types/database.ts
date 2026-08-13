@@ -419,6 +419,18 @@ export interface Database {
         Args: { p_name: string; p_theme?: string };
         Returns: Json;
       };
+      create_mission: {
+        Args: {
+          p_title: string;
+          p_description?: string;
+          p_target_type: LogType;
+          p_target_value: number;
+          p_duration_days: number;
+          p_reward_points: number;
+          p_is_cooperative?: boolean;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       log_type: LogType;

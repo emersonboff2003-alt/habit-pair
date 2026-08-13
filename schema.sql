@@ -923,6 +923,73 @@ END;
 $$;
 
 -- =============================================================================
+-- RPC: cria uma nova missão (e semeia user_missions para os perfis)
+-- -----------------------------------------------------------------------------
+-- Cria a missão como individual (um vínculo por perfil) ou cooperativa
+-- (vínculo único com user_id NULL), sempre 'available' (o usuário ativa depois).
+-- =============================================================================
+CREATE OR REPLACE FUNCTION create_mission(
+  p_title TEXT,
+  p_description TEXT DEFAULT NULL,
+  p_target_type log_type,
+  p_target_value INT,
+  p_duration_days INT,
+  p_reward_points INT,
+  p_is_cooperative BOOLEAN DEFAULT FALSE
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_mission_id UUID;
+  v_profile RECORD;
+BEGIN
+  IF p_title IS NULL OR length(trim(p_title)) = 0 OR length(trim(p_title)) > 100 THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'titulo_invalido');
+  END IF;
+  IF p_target_value IS NULL OR p_target_value <= 0 THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'meta_invalida');
+  END IF;
+  IF p_duration_days IS NULL OR p_duration_days < 1 OR p_duration_days > 30 THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'duracao_invalida');
+  END IF;
+  IF p_reward_points IS NULL OR p_reward_points <= 0 THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'recompensa_invalida');
+  END IF;
+
+  INSERT INTO missions (
+    title, description, target_type, target_value, duration_days,
+    reward_points, is_cooperative, is_active, always_active, is_temporary
+  ) VALUES (
+    trim(p_title),
+    NULLIF(trim(COALESCE(p_description, '')), ''),
+    p_target_type,
+    p_target_value,
+    p_duration_days,
+    p_reward_points,
+    COALESCE(p_is_cooperative, FALSE),
+    TRUE,
+    FALSE,
+    FALSE
+  )
+  RETURNING id INTO v_mission_id;
+
+  IF COALESCE(p_is_cooperative, FALSE) THEN
+    INSERT INTO user_missions (user_id, mission_id, current_progress, status)
+    VALUES (NULL, v_mission_id, 0, 'available');
+  ELSE
+    FOR v_profile IN SELECT id FROM profiles LOOP
+      INSERT INTO user_missions (user_id, mission_id, current_progress, status)
+      VALUES (v_profile.id, v_mission_id, 0, 'available');
+    END LOOP;
+  END IF;
+
+  RETURN jsonb_build_object('ok', TRUE, 'mission_id', v_mission_id);
+END;
+$$;
+
+-- =============================================================================
 -- Row Level Security
 -- -----------------------------------------------------------------------------
 -- Todas as mutações acontecem no servidor (service role, que ignora RLS).

@@ -3,6 +3,7 @@ import { Target, CheckCircle2, XCircle, Sparkles } from "lucide-react";
 import { getSessionProfileId } from "@/lib/session";
 import { getUserMissions } from "@/lib/data";
 import { MissionCard } from "@/components/missions/mission-card";
+import { AddMissionDialog } from "@/components/missions/add-mission-dialog";
 import type { UserMissionWithMission } from "@/types/database";
 
 export const dynamic = "force-dynamic";
@@ -46,12 +47,15 @@ export default async function MissionsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in-up">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight">Missões</h1>
-        <p className="text-sm text-muted">
-          Ative as missões para começar a valer pontos. Água fica sempre ativa. Missões temporárias
-          aparecem por alguns dias e voltam depois.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">Missões</h1>
+          <p className="text-sm text-muted">
+            Ative as missões para começar a valer pontos. Água fica sempre ativa. Missões temporárias
+            aparecem por alguns dias e voltam depois.
+          </p>
+        </div>
+        <AddMissionDialog />
       </div>
 
       <section className="space-y-3">

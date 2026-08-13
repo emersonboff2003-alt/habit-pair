@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import type { LogType, MissionStatus } from "@/types/database";
 import { cn } from "@/lib/utils";
 import { ActivateMissionButton } from "@/components/missions/activate-mission-button";
+import { DeleteMissionButton } from "@/components/missions/delete-mission-button";
 
 interface MissionCardProps {
   missionId: string;
@@ -83,7 +84,10 @@ export function MissionCard({
             {description && <p className="text-xs text-muted">{description}</p>}
           </div>
         </div>
-        <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+          <DeleteMissionButton missionId={missionId} />
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">

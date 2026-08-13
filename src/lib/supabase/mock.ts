@@ -1402,6 +1402,65 @@ function rpcMock(
     return Promise.resolve({ data: { ok: true, profile_id: profile.id } as Json, error: null });
   }
 
+  if (fn === "create_mission") {
+    const title = (args?.p_title as string | undefined)?.trim();
+    const description = ((args?.p_description as string | undefined) ?? "").trim() || null;
+    const targetType = args?.p_target_type as LogType;
+    const targetValue = Number(args?.p_target_value);
+    const durationDays = Number(args?.p_duration_days);
+    const rewardPoints = Number(args?.p_reward_points);
+    const isCooperative = Boolean(args?.p_is_cooperative);
+
+    if (!title || title.length > 100) {
+      return Promise.resolve({ data: { ok: false, error: "titulo_invalido" }, error: null });
+    }
+    if (!targetValue || targetValue <= 0) {
+      return Promise.resolve({ data: { ok: false, error: "meta_invalida" }, error: null });
+    }
+    if (!durationDays || durationDays < 1 || durationDays > 30) {
+      return Promise.resolve({ data: { ok: false, error: "duracao_invalida" }, error: null });
+    }
+    if (!rewardPoints || rewardPoints <= 0) {
+      return Promise.resolve({ data: { ok: false, error: "recompensa_invalida" }, error: null });
+    }
+
+    const mission: Mission = {
+      id: newId(),
+      title,
+      description,
+      target_type: targetType,
+      target_value: targetValue,
+      duration_days: durationDays,
+      reward_points: rewardPoints,
+      is_cooperative: isCooperative,
+      is_active: true,
+      always_active: false,
+      is_temporary: false,
+      stay_min_days: 1,
+      stay_max_days: 3,
+      created_at: now(),
+    };
+    MISSIONS.push(mission);
+
+    const targets = isCooperative ? [null] : PROFILES.map((p) => p.id);
+    for (const uid of targets) {
+      USER_MISSIONS.push({
+        id: newId(),
+        user_id: uid,
+        mission_id: mission.id,
+        current_progress: 0,
+        status: "available",
+        started_at: now(),
+        completed_at: null,
+        available_until: null,
+        points_awarded: 0,
+        next_available_at: null,
+      });
+    }
+
+    return Promise.resolve({ data: { ok: true, mission_id: mission.id } as Json, error: null });
+  }
+
   if (fn === "activate_mission") {
     const missionId = args?.p_mission_id as string | undefined;
     const userId = args?.p_user_id as string | undefined;
