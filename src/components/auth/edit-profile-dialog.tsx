@@ -1,34 +1,38 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Loader2 } from "lucide-react";
+import { Pencil, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { createProfileAction } from "@/lib/actions/profiles";
+import { updateProfileAction } from "@/lib/actions/profiles";
 
-export function CreateProfileCard() {
+interface EditProfileDialogProps {
+  profileId: string;
+  name: string;
+}
+
+export function EditProfileDialog({ profileId, name }: EditProfileDialogProps) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [name, setName] = useState("");
+  const [value, setValue] = useState(name);
   const [error, setError] = useState<string | null>(null);
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
     if (next) {
-      setName("");
+      setValue(name);
       setError(null);
     }
   }
 
-  function handleCreate() {
+  function handleSave() {
     setError(null);
     startTransition(async () => {
-      const res = await createProfileAction(name);
+      const res = await updateProfileAction(profileId, value);
       if (res.ok) {
-        setName("");
         setOpen(false);
       } else {
-        setError(res.error ?? "Não foi possível criar o perfil.");
+        setError(res.error ?? "Não foi possível renomear.");
       }
     });
   }
@@ -38,18 +42,17 @@ export function CreateProfileCard() {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-border bg-card p-3 text-muted transition-colors hover:border-accent/50 hover:text-fg-2"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-muted transition-colors hover:bg-raised hover:text-fg-2"
+          aria-label={`Editar ${name}`}
+          title="Editar perfil"
         >
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-border">
-            <Plus className="h-5 w-5" />
-          </span>
-          <span className="text-sm font-semibold">Adicionar perfil</span>
+          <Pencil className="h-4 w-4" />
         </button>
       </DialogTrigger>
 
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Novo perfil</DialogTitle>
+          <DialogTitle>Editar perfil</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3">
@@ -57,14 +60,13 @@ export function CreateProfileCard() {
             <span className="mb-1 block text-sm text-fg-2">Nome</span>
             <input
               type="text"
-              value={name}
+              value={value}
               maxLength={50}
               autoFocus
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => setValue(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && name.trim() && !pending) handleCreate();
+                if (e.key === "Enter" && value.trim() && !pending) handleSave();
               }}
-              placeholder="Ex.: Lucas"
               className="h-10 w-full rounded-xl border border-border bg-card px-3 text-sm outline-none placeholder:text-muted"
             />
           </label>
@@ -75,9 +77,9 @@ export function CreateProfileCard() {
             </p>
           )}
 
-          <Button type="button" onClick={handleCreate} disabled={pending || !name.trim()}>
+          <Button type="button" onClick={handleSave} disabled={pending || !value.trim()}>
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Criar perfil
+            Salvar
           </Button>
         </div>
       </DialogContent>

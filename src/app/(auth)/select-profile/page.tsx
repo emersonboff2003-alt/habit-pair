@@ -30,7 +30,7 @@ export default async function SelectProfilePage() {
           Erro ao carregar os perfis. Verifique a conexão com o Supabase.
         </p>
       ) : profiles && profiles.length > 0 ? (
-        <div className="flex gap-8 animate-fade-in-up">
+        <div className="flex w-full max-w-sm flex-col gap-3 animate-fade-in-up">
           {profiles.map((profile) => (
             <ProfileCard key={profile.id} profile={profile} />
           ))}
