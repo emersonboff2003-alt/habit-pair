@@ -1,4 +1,5 @@
 import type { Log, LogType, MealSlot, NutritionCategory } from "@/types/database";
+import { dateKeyForIso, dateKeyInTimeZone, shiftDateKey } from "@/lib/utils";
 
 export const DAILY_LIMITS = {
   water: {
@@ -321,4 +322,22 @@ export function calcDetailedMealPoints(
   if (bonusApplied) points += COMPLETE_MEAL_BONUS;
 
   return { points, itemCount, bonusApplied, items: previews };
+}
+
+/**
+ * Quantos dias seguidos o usuário registrou pelo menos um hábito.
+ * Conta no fuso brasileiro. Se hoje ainda não tem registro, a sequência
+ * continua valendo a partir de ontem (não é "quebrada" no começo do dia).
+ */
+export function computeStreak(logs: Log[]): number {
+  const activeDays = new Set(logs.map((log) => dateKeyForIso(log.created_at)));
+  const today = dateKeyInTimeZone();
+
+  let cursor = activeDays.has(today) ? today : shiftDateKey(today, -1);
+  let streak = 0;
+  while (activeDays.has(cursor)) {
+    streak += 1;
+    cursor = shiftDateKey(cursor, -1);
+  }
+  return streak;
 }

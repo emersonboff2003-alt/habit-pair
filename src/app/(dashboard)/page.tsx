@@ -1,10 +1,10 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { Droplet, Dumbbell, Apple, Sparkles, Star } from "lucide-react";
+import { Droplet, Dumbbell, Apple, Sparkles, Star, Flame } from "lucide-react";
 import { getSessionProfileId } from "@/lib/session";
-import { getProfiles, getTodayLogs } from "@/lib/data";
-import { computeTodayTotals, DAILY_TARGETS } from "@/lib/gamification";
-import { hourInTimeZone } from "@/lib/utils";
+import { getProfiles, getTodayLogs, getLogsForRange } from "@/lib/data";
+import { computeTodayTotals, computeStreak, DAILY_TARGETS } from "@/lib/gamification";
+import { dateKeyInTimeZone, dayStartToUtc, hourInTimeZone, shiftDateKey } from "@/lib/utils";
 import { HabitCard } from "@/components/dashboard/habit-card";
 import { LeaderboardSection, LeaderboardSkeleton } from "@/components/dashboard/leaderboard-section";
 
@@ -30,6 +30,10 @@ export default async function DashboardPage() {
   const currentIndex = profiles.findIndex((p) => p.id === profileId);
   const myTotals = totalsByUser[currentIndex] ?? computeTodayTotals([]);
 
+  const streakFrom = dayStartToUtc(shiftDateKey(dateKeyInTimeZone(), -90));
+  const streakLogs = await getLogsForRange(profileId, streakFrom, new Date().toISOString());
+  const streak = computeStreak(streakLogs);
+
   const waterLabel = `${myTotals.waterMl.toLocaleString("pt-BR")} / ${DAILY_TARGETS.water.toLocaleString("pt-BR")} ml`;
   const exerciseLabel = `${myTotals.exerciseMin} / ${DAILY_TARGETS.exercise} min`;
   const nutritionLabel =
@@ -46,6 +50,15 @@ export default async function DashboardPage() {
         </p>
         <h1 className="text-xl font-bold tracking-tight">Como estão seus hábitos hoje?</h1>
       </div>
+
+      {streak > 0 && (
+        <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-300">
+          <Flame className="h-4 w-4 shrink-0" />
+          <span className="font-semibold">
+            {streak} {streak === 1 ? "dia seguido" : "dias seguidos"}
+          </span>
+        </div>
+      )}
 
       {/* Cartão de pontos */}
       <div className="relative overflow-hidden rounded-2xl border border-accent/30 bg-gradient-to-br from-accent/20 via-card to-accent-2/10 p-5">

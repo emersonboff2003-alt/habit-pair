@@ -69,6 +69,17 @@ export function dateKeyForIso(iso: string, timeZone = APP_TIME_ZONE): string {
   }).format(new Date(iso));
 }
 
+/** Desloca uma data "YYYY-MM-DD" em N dias (negativo volta, positivo avança). */
+export function shiftDateKey(key: string, deltaDays: number): string {
+  const [y, m, d] = key.split("-").map(Number);
+  const shifted = new Date(Date.UTC(y, m - 1, d + deltaDays));
+  return [
+    shifted.getUTCFullYear(),
+    String(shifted.getUTCMonth() + 1).padStart(2, "0"),
+    String(shifted.getUTCDate()).padStart(2, "0"),
+  ].join("-");
+}
+
 /** Hora atual (0–23) no fuso informado. */
 export function hourInTimeZone(timeZone = APP_TIME_ZONE): number {
   const parts = new Intl.DateTimeFormat("en-US", {
