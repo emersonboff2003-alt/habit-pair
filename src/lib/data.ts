@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { startOfToday } from "@/lib/utils";
 import type {
   ExerciseType,
   FoodItem,
@@ -15,12 +16,8 @@ import type {
   UserMissionWithMission,
 } from "@/types/database";
 
-/** Início do dia (fuso local) como timestamp UTC para consultas TIMESTAMPTZ. */
-export function startOfToday(): string {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
-}
+/** Início do dia (fuso brasileiro) como timestamp UTC para consultas TIMESTAMPTZ. */
+export { startOfToday };
 
 async function fetchProfiles(): Promise<Profile[]> {
   const { data, error } = await supabaseAdmin
@@ -36,12 +33,11 @@ async function fetchProfiles(): Promise<Profile[]> {
 }
 
 /**
- * Perfis em ordem alfabética. Revalidate curto: o saldo de pontos muda com
- * frequência, mas esta camada só evita queries repetidas num curto espaço.
+ * Perfis em ordem alfabética. Sem cache de dados (apenas deduplicação por
+ * request via React cache): o saldo de pontos muda a cada registro e não pode
+ * ficar defasado (era isso que fazia os pontos "mudarem" ao sair e voltar).
  */
-export const getProfiles = cache(() =>
-  unstable_cache(fetchProfiles, ["getProfiles"], { revalidate: 15 })(),
-);
+export const getProfiles = cache(fetchProfiles);
 
 async function fetchProfileById(id: string): Promise<Profile | null> {
   const { data, error } = await supabaseAdmin
@@ -57,9 +53,8 @@ async function fetchProfileById(id: string): Promise<Profile | null> {
   return data;
 }
 
-export const getProfileById = cache((id: string) =>
-  unstable_cache(fetchProfileById, ["getProfileById", id], { revalidate: 15 })(id),
-);
+/** Perfil por id. Sem cache de dados (pontos sempre frescos). */
+export const getProfileById = cache(fetchProfileById);
 
 /** Logs do dia atual do usuário (deduplicado por request). */
 export const getTodayLogs = cache(async (profileId: string): Promise<Log[]> => {

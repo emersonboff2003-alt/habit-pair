@@ -205,14 +205,12 @@ export function computeTodayTotals(logs: Log[]): DayTotals {
     }
   }
 
-  const waterPoints = Math.min(
-    calcPointsForLog("water", waterMl),
-    DAILY_LIMITS.water.dailyCapPoints,
-  );
-  const exercisePoints = Math.min(
-    calcPointsForLog("exercise", exerciseMin),
-    DAILY_LIMITS.exercise.dailyCapPoints,
-  );
+  const waterPoints = logs
+    .filter((l) => l.type === "water")
+    .reduce((sum, l) => sum + l.points_earned, 0);
+  const exercisePoints = logs
+    .filter((l) => l.type === "exercise")
+    .reduce((sum, l) => sum + l.points_earned, 0);
   const nutritionPoints = logs
     .filter((l) => l.type === "nutrition")
     .reduce((sum, l) => sum + l.points_earned, 0);

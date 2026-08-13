@@ -1,14 +1,15 @@
 /* Habit Pair — Service Worker (PWA) */
 
-// Bump a versão (ex.: v2) sempre que o app for atualizado para forçar
-// o navegador a instalar o service worker novo e limpar caches antigos.
-const CACHE_NAME = "habit-pair-v3";
+// IMPORTANTE: as páginas são renderizadas no servidor com os dados do perfil
+// logado. Cachear o HTML de "/", "/logs", etc. fazia um perfil ver os dados do
+// outro (e pontos antigos) quando o app era reaberto offline. Por isso este
+// service worker NUNCA cacheia documentos HTML — apenas ativos estáticos
+// (ícones, manifest, chunks do Next).
+
+// Bump a versão sempre que o app for atualizado para forçar a limpeza de
+// caches antigos.
+const CACHE_NAME = "habit-pair-v4";
 const CORE_ASSETS = [
-  "/",
-  "/select-profile",
-  "/logs",
-  "/missions",
-  "/store",
   "/manifest.webmanifest",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
@@ -35,6 +36,17 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+function isStaticAsset(url) {
+  return (
+    url.pathname.startsWith("/_next/static/") ||
+    url.pathname.startsWith("/icons/") ||
+    url.pathname === "/manifest.webmanifest" ||
+    url.pathname.endsWith(".png") ||
+    url.pathname.endsWith(".ico") ||
+    url.pathname.endsWith(".webmanifest")
+  );
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
@@ -42,40 +54,49 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Navegação: network-first com fallback para cache e, por fim, a home.
+  // Navegação (documentos HTML): sempre network-first e SEM cache. Se estiver
+  // offline, mostra uma mensagem genérica — nunca serve HTML de outro perfil.
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(async () => {
-          const cached = await caches.match(request);
-          if (cached) return cached;
-          const fallback = await caches.match("/");
-          return fallback ?? new Response("Offline", { status: 503 });
-        }),
+      fetch(request).catch(() => {
+        const body =
+          "<!doctype html><html lang='pt-BR'><meta charset='utf-8'>" +
+          "<meta name='viewport' content='width=device-width,initial-scale=1'>" +
+          "<style>body{font-family:system-ui,sans-serif;background:#09090b;color:#e4e4e7;" +
+          "display:flex;min-height:100vh;align-items:center;justify-content:center;" +
+          "text-align:center;padding:24px;margin:0}</style>" +
+          "<div><h1 style='font-size:1.25rem;margin:0 0 8px'>Sem conexão</h1>" +
+          "<p style='color:#a1a1aa;margin:0'>Conecte-se à internet para carregar seus dados.</p></div>";
+        return new Response(body, {
+          status: 200,
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        });
+      }),
     );
     return;
   }
 
   // Ativos estáticos: cache-first com revalidação em segundo plano.
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      const fetchPromise = fetch(request)
-        .then((response) => {
-          if (response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          }
-          return response;
-        })
-        .catch(() => cached);
-      return cached || fetchPromise;
-    }),
-  );
+  if (isStaticAsset(url)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        const fetchPromise = fetch(request)
+          .then((response) => {
+            if (response.ok) {
+              const copy = response.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+            }
+            return response;
+          })
+          .catch(() => cached);
+        return cached || fetchPromise;
+      }),
+    );
+    return;
+  }
+
+  // Demais GETs (ex.: payloads RSC do Next): sempre rede, sem cache.
+  event.respondWith(fetch(request));
 });
 
 // -----------------------------------------------------------------------------

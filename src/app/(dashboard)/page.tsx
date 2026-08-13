@@ -4,6 +4,7 @@ import { Droplet, Dumbbell, Apple, Sparkles, Star } from "lucide-react";
 import { getSessionProfileId } from "@/lib/session";
 import { getProfiles, getTodayLogs } from "@/lib/data";
 import { computeTodayTotals, DAILY_TARGETS } from "@/lib/gamification";
+import { hourInTimeZone } from "@/lib/utils";
 import { HabitCard } from "@/components/dashboard/habit-card";
 import { LeaderboardSection, LeaderboardSkeleton } from "@/components/dashboard/leaderboard-section";
 
@@ -40,7 +41,7 @@ export default async function DashboardPage() {
     <div className="space-y-4 animate-fade-in-up">
       <div>
         <p className="text-sm text-muted">
-          {greetingFor(new Date().getHours())},{" "}
+          {greetingFor(hourInTimeZone())},{" "}
           <span className="font-semibold text-fg-2">{current.name}</span>
         </p>
         <h1 className="text-xl font-bold tracking-tight">Como estão seus hábitos hoje?</h1>

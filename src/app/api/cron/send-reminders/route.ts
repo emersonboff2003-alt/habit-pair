@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { isMockMode } from "@/lib/supabase/mock";
 import { getWebPush } from "@/lib/webpush";
 import { DAILY_TARGETS, MEAL_SLOT_LABELS } from "@/lib/gamification";
+import { dateKeyInTimeZone, startOfToday } from "@/lib/utils";
 import type { MealSlot, PushSubscriptionRow, ReminderSettings } from "@/types/database";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
   }
 
   const nowMin = nowMinutes();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = dateKeyInTimeZone();
 
   const wrap = { sent: 0, skipped: 0, removed: 0, errors: 0 };
 
@@ -103,7 +104,7 @@ export async function GET(request: NextRequest) {
         .select("user_id, value")
         .eq("type", "water")
         .in("user_id", waterGroup)
-        .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString());
+        .gte("created_at", startOfToday());
 
       if (!waterError && waterLogs) {
         const totals = new Map<string, number>();

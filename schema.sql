@@ -203,6 +203,18 @@ AS $$
   END;
 $$;
 
+-- Início do dia no fuso brasileiro (America/Sao_Paulo) como TIMESTAMPTZ.
+-- Sem isso, "hoje" começava à meia-noite UTC (21h do dia anterior no Brasil),
+-- fazendo registros noturnos contarem no dia errado e o teto diário virar
+-- em horário errado.
+CREATE OR REPLACE FUNCTION day_start_br()
+RETURNS TIMESTAMPTZ
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT (date_trunc('day', NOW() AT TIME ZONE 'America/Sao_Paulo')) AT TIME ZONE 'America/Sao_Paulo';
+$$;
+
 -- =============================================================================
 -- Trigger: motor de progresso de missões + crédito de pontos ao inserir log
 -- =============================================================================
@@ -227,7 +239,7 @@ BEGIN
        WHERE user_id = NEW.user_id
          AND type = 'nutrition'
          AND description = NEW.description
-         AND created_at >= date_trunc('day', NOW())
+         AND created_at >= day_start_br()
      ) THEN
     RAISE EXCEPTION 'nutricao_duplicada: Check-in nutricional já registrado hoje para esta categoria.'
       USING ERRCODE = 'P0001';
@@ -241,7 +253,7 @@ BEGIN
      FROM logs
     WHERE user_id = NEW.user_id
       AND type = NEW.type
-      AND created_at >= date_trunc('day', NOW())
+      AND created_at >= day_start_br()
     FOR UPDATE;  -- ADICIONADO PARA PREVENIR CONDIÇÃO DE CORRIDA
 
   v_cap := gamification_daily_cap(NEW.type);
@@ -283,9 +295,9 @@ BEGIN
          SET status = 'completed',
              completed_at = NOW(),
              points_awarded = v_mission.reward_points,
-             next_available_at = CASE
-               WHEN v_mission.always_active OR v_mission.duration_days = 1
-                 THEN date_trunc('day', NOW()) + interval '1 day'
+               next_available_at = CASE
+                 WHEN v_mission.always_active OR v_mission.duration_days = 1
+                   THEN day_start_br() + interval '1 day'
                WHEN v_mission.is_temporary
                  THEN NOW() + ((2 + floor(random() * 6))::int) * interval '1 day'
                ELSE NOW() + make_interval(days => v_mission.duration_days)
@@ -360,7 +372,7 @@ BEGIN
        WHERE user_id = p_user_id
          AND slot = p_slot
          AND is_quick = TRUE
-         AND created_at >= date_trunc('day', NOW())
+         AND created_at >= day_start_br()
     ) THEN
       RETURN jsonb_build_object('ok', FALSE, 'error', 'refeicao_rapida_duplicada');
     END IF;
@@ -474,7 +486,7 @@ BEGIN
        WHERE user_id = p_user_id
          AND type = 'exercise'
          AND description = 'quick'
-         AND created_at >= date_trunc('day', NOW())
+         AND created_at >= day_start_br()
     ) THEN
       RETURN jsonb_build_object('ok', FALSE, 'error', 'treino_rapido_duplicado');
     END IF;
@@ -644,7 +656,7 @@ BEGIN
          completed_at = NOW(),
          next_available_at = CASE
            WHEN m.always_active OR m.duration_days = 1
-             THEN date_trunc('day', NOW()) + interval '1 day'
+             THEN day_start_br() + interval '1 day'
            ELSE NOW() + make_interval(days => m.duration_days)
          END
     FROM missions m
@@ -1061,4 +1073,21 @@ ON CONFLICT (user_id) DO NOTHING;
 --
 --   (e depois aplique as CREATE OR REPLACE de handle_log_insert, roll_missions e
 --   activate_mission desta versão do schema.sql)
+--
+-- FUSO HORÁRIO DO "DIA" (correção de registros noturnos / teto diário):
+-- -----------------------------------------------------------------------------
+-- O "dia" passou a ser calculado no fuso brasileiro (America/Sao_Paulo) e não
+-- mais em UTC. Para o banco já existente, rode no SQL Editor (pode repetir):
+--
+--   CREATE OR REPLACE FUNCTION day_start_br()
+--   RETURNS TIMESTAMPTZ
+--   LANGUAGE sql
+--   STABLE
+--   AS $$
+--     SELECT (date_trunc('day', NOW() AT TIME ZONE 'America/Sao_Paulo')) AT TIME ZONE 'America/Sao_Paulo';
+--   $$;
+--
+--   (e depois re-aplique os CREATE OR REPLACE de handle_log_insert,
+--   insert_meal_log, insert_exercise_log e roll_missions desta versão, que
+--   trocam date_trunc('day', NOW()) por day_start_br())
 -- =============================================================================

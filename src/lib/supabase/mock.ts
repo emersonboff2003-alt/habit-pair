@@ -34,6 +34,7 @@ import {
   QUICK_EXERCISE_POINTS,
   QUICK_MEAL_POINTS,
 } from "@/lib/gamification";
+import { startOfToday as startOfTodayBr } from "@/lib/utils";
 
 export function isMockMode(): boolean {
   return (
@@ -42,9 +43,7 @@ export function isMockMode(): boolean {
 }
 
 function startOfToday(): string {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
+  return startOfTodayBr();
 }
 
 function now(): string {
