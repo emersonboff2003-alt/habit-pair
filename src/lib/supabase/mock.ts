@@ -1283,6 +1283,61 @@ function rpcMock(
     });
   }
 
+  if (fn === "delete_log") {
+    const userId = args?.p_user_id as string | undefined;
+    const logId = args?.p_log_id as string | undefined;
+    if (!userId || !logId) {
+      return Promise.resolve({ data: { ok: false, error: "parametros_invalidos" }, error: null });
+    }
+
+    const index = LOGS.findIndex((l) => l.id === logId && l.user_id === userId);
+    if (index === -1) {
+      return Promise.resolve({ data: { ok: false, error: "registro_nao_encontrado" }, error: null });
+    }
+
+    const log = LOGS[index];
+
+    // Reverte pontos no perfil.
+    if (log.points_earned > 0) {
+      const profile = PROFILES.find((p) => p.id === userId);
+      if (profile) {
+        profile.points_balance = Math.max(0, profile.points_balance - log.points_earned);
+        profile.total_points_earned = Math.max(0, profile.total_points_earned - log.points_earned);
+      }
+    }
+
+    // Recua progresso das missões em andamento do mesmo tipo.
+    for (const um of USER_MISSIONS) {
+      const mission = MISSIONS.find((m) => m.id === um.mission_id);
+      if (!mission || mission.target_type !== log.type || um.status !== "in_progress") continue;
+      if (um.user_id !== userId && um.user_id !== null) continue;
+      um.current_progress = Math.max(0, um.current_progress - log.value);
+    }
+
+    // Se for refeição, apaga meal_logs + itens.
+    if (log.description?.startsWith("meal:")) {
+      const mealLogId = log.description.split(":")[2];
+      for (let i = MEAL_LOG_ITEMS.length - 1; i >= 0; i--) {
+        if (MEAL_LOG_ITEMS[i].meal_log_id === mealLogId) MEAL_LOG_ITEMS.splice(i, 1);
+      }
+      for (let i = MEAL_LOGS.length - 1; i >= 0; i--) {
+        if (MEAL_LOGS[i].id === mealLogId && MEAL_LOGS[i].user_id === userId) MEAL_LOGS.splice(i, 1);
+      }
+    }
+
+    LOGS.splice(index, 1);
+
+    const profile = PROFILES.find((p) => p.id === userId);
+    return Promise.resolve({
+      data: {
+        ok: true,
+        points_reverted: log.points_earned,
+        new_balance: profile ? profile.points_balance : 0,
+      } as Json,
+      error: null,
+    });
+  }
+
   if (fn === "activate_mission") {
     const missionId = args?.p_mission_id as string | undefined;
     const userId = args?.p_user_id as string | undefined;

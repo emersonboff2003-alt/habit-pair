@@ -95,10 +95,59 @@ export async function addLogAction(input: AddLogInput): Promise<AddLogResult> {
     revalidatePath("/logs");
     revalidatePath("/missions");
 
-    return { ok: true, pointsEarned: inserted.points_earned, completedMissionTitles };
+    return {
+      ok: true,
+      pointsEarned: inserted.points_earned,
+      completedMissionTitles,
+      logId: inserted.id,
+    };
   } catch (e) {
     console.error("addLogAction", e);
     return { ok: false, error: "Erro inesperado ao salvar o registro.", pointsEarned: 0 };
+  }
+}
+
+/**
+ * Desfaz/exclui um registro do usuário, revertendo os pontos creditados e o
+ * progresso das missões em andamento (lógica no banco via RPC delete_log).
+ */
+export async function deleteLogAction(
+  logId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const profileId = await getSessionProfileId();
+    if (!profileId) return { ok: false, error: "Sessão expirada. Selecione o perfil novamente." };
+
+    if (!logId) return { ok: false, error: "Registro inválido." };
+
+    const { data, error } = await supabaseAdmin.rpc("delete_log", {
+      p_user_id: profileId,
+      p_log_id: logId,
+    });
+
+    if (error) {
+      console.error("deleteLogAction: rpc error", error);
+      return { ok: false, error: "Não foi possível desfazer o registro." };
+    }
+
+    const result = data as unknown as { ok: boolean; error?: string };
+    if (!result.ok) {
+      const message =
+        result.error === "registro_nao_encontrado"
+          ? "Registro não encontrado."
+          : "Não foi possível desfazer o registro.";
+      return { ok: false, error: message };
+    }
+
+    revalidatePath("/");
+    revalidatePath("/logs");
+    revalidatePath("/history");
+    revalidatePath("/missions");
+
+    return { ok: true };
+  } catch (e) {
+    console.error("deleteLogAction", e);
+    return { ok: false, error: "Erro inesperado ao desfazer o registro." };
   }
 }
 

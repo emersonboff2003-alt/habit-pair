@@ -565,6 +565,80 @@ END;
 $$;
 
 -- =============================================================================
+-- RPC: desfaz/exclui um registro (log) do usuário
+-- -----------------------------------------------------------------------------
+-- Reverte os pontos creditados no perfil, recua o progresso das missões em
+-- andamento do mesmo tipo e apaga o log. Se for refeição (meal:*), também
+-- apaga o meal_logs (com cascade nos itens).
+-- Retorna JSONB com { ok, points_reverted, new_balance } ou { ok: false, error }.
+-- Limitação v1: missões já 'completed' não são revertidas (evita corromper
+-- pontos de recompensa já creditados).
+-- =============================================================================
+CREATE OR REPLACE FUNCTION delete_log(p_user_id UUID, p_log_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_log RECORD;
+  v_balance INT;
+  v_meal_log_id UUID;
+BEGIN
+  IF p_user_id IS NULL OR p_log_id IS NULL THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'parametros_invalidos');
+  END IF;
+
+  -- Serializa com o trigger de insert (trava a linha do perfil).
+  PERFORM 1 FROM profiles WHERE id = p_user_id FOR UPDATE;
+
+  SELECT * INTO v_log FROM logs WHERE id = p_log_id AND user_id = p_user_id;
+  IF v_log.id IS NULL THEN
+    RETURN jsonb_build_object('ok', FALSE, 'error', 'registro_nao_encontrado');
+  END IF;
+
+  -- 1) Reverte os pontos do registro no saldo do perfil.
+  IF v_log.points_earned > 0 THEN
+    UPDATE profiles
+       SET points_balance = GREATEST(points_balance - v_log.points_earned, 0),
+           total_points_earned = GREATEST(total_points_earned - v_log.points_earned, 0)
+     WHERE id = p_user_id;
+  END IF;
+
+  -- 2) Recua o progresso das missões em andamento do mesmo tipo.
+  UPDATE user_missions
+     SET current_progress = GREATEST(current_progress - v_log.value, 0)
+   WHERE status = 'in_progress'
+     AND (user_id = p_user_id OR user_id IS NULL)
+     AND mission_id IN (
+       SELECT id FROM missions WHERE target_type = v_log.type AND is_active = TRUE
+     );
+
+  -- 3) Se for refeição, apaga o meal_logs (cascade remove os itens).
+  IF v_log.description LIKE 'meal:%' THEN
+    BEGIN
+      v_meal_log_id := split_part(v_log.description, ':', 3)::uuid;
+    EXCEPTION WHEN others THEN
+      v_meal_log_id := NULL;
+    END;
+    IF v_meal_log_id IS NOT NULL THEN
+      DELETE FROM meal_logs WHERE id = v_meal_log_id AND user_id = p_user_id;
+    END IF;
+  END IF;
+
+  -- 4) Apaga o log.
+  DELETE FROM logs WHERE id = p_log_id;
+
+  SELECT points_balance INTO v_balance FROM profiles WHERE id = p_user_id;
+
+  RETURN jsonb_build_object(
+    'ok', TRUE,
+    'points_reverted', v_log.points_earned,
+    'new_balance', COALESCE(v_balance, 0)
+  );
+END;
+$$;
+
+-- =============================================================================
 -- RPC: gira o ciclo de missões (cron diário /api/cron/check-missions)
 -- -----------------------------------------------------------------------------
 -- 1) Temporárias que ficaram 'available' sem ativação até available_until: somem
@@ -1093,4 +1167,9 @@ ON CONFLICT (user_id) DO NOTHING;
 --   (e depois re-aplique os CREATE OR REPLACE de handle_log_insert,
 --   insert_meal_log, insert_exercise_log e roll_missions desta versão, que
 --   trocam date_trunc('day', NOW()) por day_start_br())
+--
+-- DESFAZER/EXCLUIR REGISTRO:
+-- -----------------------------------------------------------------------------
+-- Para o banco já existente, rode o CREATE OR REPLACE FUNCTION delete_log(...)
+-- desta versão do schema.sql (seção "RPC: desfaz/exclui um registro").
 -- =============================================================================

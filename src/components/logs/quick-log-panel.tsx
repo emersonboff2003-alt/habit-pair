@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition, useEffect } from "react";
 import { Droplet, Dumbbell, CheckCircle2, Info, Zap, X } from "lucide-react";
-import { addLogAction, addQuickExerciseAction } from "@/lib/actions/logs";
+import { addLogAction, addQuickExerciseAction, deleteLogAction } from "@/lib/actions/logs";
 import { MealLogPanel } from "@/components/logs/meal-log-panel";
 import { ExerciseDetailDialog } from "@/components/logs/exercise-detail-dialog";
 import { QUICK_EXERCISE_POINTS } from "@/lib/gamification";
@@ -16,7 +16,7 @@ interface QuickLogPanelProps {
   quickExerciseDone: boolean;
 }
 
-type Feedback = { kind: "success" | "error"; text: string } | null;
+type Feedback = { kind: "success" | "error"; text: string; undoLogId?: string } | null;
 
 const WATER_PRESETS = [250, 500, 750, 1000];
 
@@ -50,10 +50,21 @@ export function QuickLogPanel({
           result.completedMissionTitles && result.completedMissionTitles.length > 0
             ? ` · Missão concluída: ${result.completedMissionTitles.join(", ")}`
             : "";
-        notify({ kind: "success", text: `+${result.pointsEarned} pts${missionText}` });
+        notify({
+          kind: "success",
+          text: `+${result.pointsEarned} pts${missionText}`,
+          undoLogId: result.logId,
+        });
       } else {
         notify({ kind: "error", text: result.error ?? "Não foi possível registrar." });
       }
+    });
+  }
+
+  function handleUndo(logId: string) {
+    setFeedback(null);
+    startTransition(async () => {
+      await deleteLogAction(logId);
     });
   }
 
@@ -158,6 +169,15 @@ export function QuickLogPanel({
             <Info className="h-5 w-5 shrink-0 text-red-400" />
           )}
           <p className="flex-1 text-sm text-foreground">{feedback.text}</p>
+          {feedback.undoLogId && (
+            <button
+              type="button"
+              onClick={() => handleUndo(feedback.undoLogId!)}
+              className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-red-300 transition-colors hover:bg-red-500/15"
+            >
+              Desfazer
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setFeedback(null)}

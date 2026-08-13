@@ -1,6 +1,7 @@
 import { Droplet, Dumbbell, Apple } from "lucide-react";
 import type { ExerciseType, Log, LogType } from "@/types/database";
 import { parseMealDescription, MEAL_SLOT_LABELS } from "@/lib/gamification";
+import { DeleteLogButton } from "@/components/logs/delete-log-button";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -68,6 +69,7 @@ export function LogList({
             <span className="shrink-0 text-sm font-semibold text-violet-300">
               +{log.points_earned} pts
             </span>
+            <DeleteLogButton logId={log.id} />
           </li>
         );
       })}

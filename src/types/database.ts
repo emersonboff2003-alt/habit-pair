@@ -232,6 +232,8 @@ export interface AddLogResult {
   pointsEarned: number;
   error?: string;
   completedMissionTitles?: string[];
+  /** Id do log recém-criado (para permitir "desfazer" logo após registrar). */
+  logId?: string;
 }
 
 export interface RedeemRewardResult {
@@ -405,6 +407,10 @@ export interface Database {
       };
       activate_mission: {
         Args: { p_user_id: string; p_mission_id: string };
+        Returns: Json;
+      };
+      delete_log: {
+        Args: { p_user_id: string; p_log_id: string };
         Returns: Json;
       };
     };
