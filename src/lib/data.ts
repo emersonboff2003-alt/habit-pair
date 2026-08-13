@@ -88,6 +88,44 @@ export const getRecentLogs = cache(async (profileId: string, limit = 20): Promis
   return data ?? [];
 });
 
+/** Logs do usuário num intervalo [from, to) — usado no histórico/calendário. */
+export const getLogsForRange = cache(
+  async (profileId: string, from: string, to: string): Promise<Log[]> => {
+    const { data, error } = await supabaseAdmin
+      .from("logs")
+      .select("*")
+      .eq("user_id", profileId)
+      .gte("created_at", from)
+      .lt("created_at", to)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("getLogsForRange", error);
+      return [];
+    }
+    return data ?? [];
+  },
+);
+
+/** Refeições com itens num intervalo [from, to) — para resumos no histórico. */
+export const getMealLogsForRange = cache(
+  async (profileId: string, from: string, to: string): Promise<MealLogWithItems[]> => {
+    const { data, error } = await supabaseAdmin
+      .from("meal_logs")
+      .select("*, meal_log_items:meal_log_items(*, food_item:food_items(name))")
+      .eq("user_id", profileId)
+      .gte("created_at", from)
+      .lt("created_at", to)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("getMealLogsForRange", error);
+      return [];
+    }
+    return (data ?? []) as unknown as MealLogWithItems[];
+  },
+);
+
 /**
  * Missões do usuário (individuais) + missões cooperativas, com detalhes.
  * Ordenadas: em andamento primeiro, depois concluídas/falhas.

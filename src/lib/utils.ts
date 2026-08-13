@@ -40,15 +40,33 @@ export function dateKeyInTimeZone(timeZone = APP_TIME_ZONE): string {
 }
 
 /**
+ * Converte uma data "YYYY-MM-DD" (interpretada no fuso informado) para o
+ * instante de meia-noite correspondente, em ISO UTC.
+ */
+export function dayStartToUtc(ymd: string, timeZone = APP_TIME_ZONE): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const utcMidnightGuess = Date.UTC(y, m - 1, d);
+  const offset = getTimeZoneOffsetMs(timeZone, utcMidnightGuess);
+  return new Date(utcMidnightGuess - offset).toISOString();
+}
+
+/**
  * Início do dia (meia-noite) no fuso informado, como instante ISO em UTC.
  * Evita que o "dia" seja calculado no fuso do servidor (UTC), o que fazia
  * registros noturnos caírem no dia errado para o usuário.
  */
 export function startOfToday(timeZone = APP_TIME_ZONE): string {
-  const [y, m, d] = dateKeyInTimeZone(timeZone).split("-").map(Number);
-  const utcMidnightGuess = Date.UTC(y, m - 1, d);
-  const offset = getTimeZoneOffsetMs(timeZone, utcMidnightGuess);
-  return new Date(utcMidnightGuess - offset).toISOString();
+  return dayStartToUtc(dateKeyInTimeZone(timeZone), timeZone);
+}
+
+/** Data "YYYY-MM-DD" de um instante ISO, no fuso informado. */
+export function dateKeyForIso(iso: string, timeZone = APP_TIME_ZONE): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
 }
 
 /** Hora atual (0–23) no fuso informado. */

@@ -1,7 +1,6 @@
 import { History } from "lucide-react";
 import {
   getTodayLogs,
-  getRecentLogs,
   getFoodItems,
   getExerciseTypes,
   getTodayMealLogs,
@@ -11,10 +10,9 @@ import { QuickLogPanel } from "@/components/logs/quick-log-panel";
 import { LogList } from "@/components/logs/log-list";
 
 export async function LogsPanel({ profileId }: { profileId: string }) {
-  const [todayLogs, recentLogs, foodItems, exerciseTypes, mealLogsToday, recentMealLogs] =
+  const [todayLogs, foodItems, exerciseTypes, mealLogsToday, recentMealLogs] =
     await Promise.all([
       getTodayLogs(profileId),
-      getRecentLogs(profileId, 20),
       getFoodItems(),
       getExerciseTypes(),
       getTodayMealLogs(profileId),
@@ -54,20 +52,6 @@ export async function LogsPanel({ profileId }: { profileId: string }) {
           </div>
           <LogList
             logs={todayLogs.slice().reverse()}
-            exerciseTypes={exerciseTypes}
-            mealSummaries={mealSummaries}
-          />
-        </section>
-      )}
-
-      {recentLogs.length > 0 && (
-        <section className="space-y-3">
-          <div className="flex items-center gap-2">
-            <History className="h-4 w-4 text-muted" />
-            <h2 className="text-sm font-semibold">Atividade recente</h2>
-          </div>
-          <LogList
-            logs={recentLogs}
             exerciseTypes={exerciseTypes}
             mealSummaries={mealSummaries}
           />

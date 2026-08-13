@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, ClipboardPlus, Target, Gift } from "lucide-react";
+import { Home, ClipboardPlus, Target, Gift, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { href: "/", label: "Início", icon: Home },
   { href: "/logs", label: "Registrar", icon: ClipboardPlus },
+  { href: "/history", label: "Histórico", icon: CalendarDays },
   { href: "/missions", label: "Missões", icon: Target },
   { href: "/store", label: "Recompensas", icon: Gift },
 ];
