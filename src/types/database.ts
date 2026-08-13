@@ -422,7 +422,7 @@ export interface Database {
       create_mission: {
         Args: {
           p_title: string;
-          p_description?: string;
+          p_description: string | null;
           p_target_type: LogType;
           p_target_value: number;
           p_duration_days: number;

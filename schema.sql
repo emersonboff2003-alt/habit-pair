@@ -930,7 +930,7 @@ $$;
 -- =============================================================================
 CREATE OR REPLACE FUNCTION create_mission(
   p_title TEXT,
-  p_description TEXT DEFAULT NULL,
+  p_description TEXT,
   p_target_type log_type,
   p_target_value INT,
   p_duration_days INT,

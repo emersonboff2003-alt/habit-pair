@@ -74,7 +74,7 @@ export async function createMissionAction(input: CreateMissionInput): Promise<Ac
 
     const { data, error } = await supabaseAdmin.rpc("create_mission", {
       p_title: input.title,
-      p_description: input.description,
+      p_description: input.description ?? null,
       p_target_type: input.targetType,
       p_target_value: input.targetValue,
       p_duration_days: input.durationDays,
